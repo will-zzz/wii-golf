@@ -8,6 +8,7 @@ import Header from "./components/Header";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import Players from "./pages/Players";
+import PlayerDetails from "./pages/PlayerDetails";
 import Events from "./pages/Events";
 import NotFound from "./pages/NotFound";
 
@@ -30,6 +31,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/players" element={<Players />} />
+                <Route path="/players/:id" element={<PlayerDetails />} />
                 <Route path="/events" element={<Events />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
@@ -43,4 +45,3 @@ const App = () => (
 );
 
 export default App;
-
