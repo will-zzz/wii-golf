@@ -8,16 +8,12 @@ interface LogoProps {
 
 const Logo: React.FC<LogoProps> = ({ className = '' }) => {
   return (
-    <Link to="/" className={`flex items-center gap-2 ${className}`}>
-      <div className="relative h-10 w-10 overflow-hidden">
-        <div className="absolute inset-0 bg-pwga-green rounded-full opacity-90"></div>
-        <div className="absolute inset-1 flex items-center justify-center text-white font-bold">
-          <span className="text-xs tracking-tighter">PWGA</span>
-        </div>
-      </div>
-      <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-pwga-green to-pwga-blue">
-        PWGA
-      </span>
+    <Link to="/" className={`flex items-center ${className}`}>
+      <img 
+        src="/lovable-uploads/6736e81b-c666-4dfa-a48d-c1fff50fb166.png" 
+        alt="PWGA Logo" 
+        className="h-8 md:h-10" 
+      />
     </Link>
   );
 };
