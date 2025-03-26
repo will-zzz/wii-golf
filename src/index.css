@@ -1,9 +1,9 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* Add Contb (Wii) Font */
+/* Add Continuum Bold (Wii) Font */
 @font-face {
-  font-family: 'Contb';
+  font-family: 'Continuum Bold';
   src: url('/fonts/Contb.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
@@ -84,7 +84,7 @@
   }
 
   body {
-    @apply bg-background text-foreground font-contb;
+    @apply bg-background text-foreground font-continuum;
     -webkit-font-smoothing: antialiased;
   }
 }

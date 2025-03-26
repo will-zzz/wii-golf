@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -21,7 +20,7 @@ export default {
 		extend: {
 			fontFamily: {
 				inter: ['Inter', 'sans-serif'],
-				contb: ['Contb', 'sans-serif'],
+				continuum: ['"Continuum Bold"', 'sans-serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
