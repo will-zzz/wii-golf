@@ -1,14 +1,13 @@
-
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import Logo from './Logo';
-import { Menu, X } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import Logo from "./Logo";
+import { Menu, X } from "lucide-react";
 
 const navItems = [
-  { title: 'About', href: '/about' },
-  { title: 'Players', href: '/players' },
-  { title: 'Events', href: '/events' },
+  { title: "About", href: "/about" },
+  { title: "Players", href: "/players" },
+  { title: "Events", href: "/events" },
 ];
 
 const Header: React.FC = () => {
@@ -20,9 +19,9 @@ const Header: React.FC = () => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
@@ -30,7 +29,7 @@ const Header: React.FC = () => {
   }, [location.pathname]);
 
   return (
-    <header 
+    <header
       className={cn(
         "fixed top-0 left-0 right-0 w-full z-50 transition-all duration-300 ease-in-out",
         isScrolled || mobileMenuOpen
@@ -38,29 +37,43 @@ const Header: React.FC = () => {
           : "bg-white/80 backdrop-blur-sm"
       )}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-6">
         <div className="flex justify-between items-center h-16">
-          <Logo />
-          
+          <div className="flex-shrink-0">
+            <Logo />
+          </div>
+
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden md:flex flex-1 justify-center space-x-8">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 to={item.href}
                 className={cn(
-                  "relative py-2 px-1 text-sm font-medium transition-colors",
+                  "relative py-2 px-1 text-2xl font-medium transition-colors",
                   "after:absolute after:left-0 after:bottom-0 after:h-0.5 after:bg-pwga-green",
                   "after:transition-all after:duration-300 hover:text-pwga-green",
                   location.pathname === item.href
                     ? "text-pwga-green after:w-full"
-                    : "text-gray-700 after:w-0 hover:after:w-full"
+                    : "text-gray-500 after:w-0 hover:after:w-full"
                 )}
               >
                 {item.title}
               </Link>
             ))}
           </nav>
+
+          {/* Apply Button */}
+          <div className="hidden md:flex">
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLSeHqJNp82Ig2erwn3q3C4qOxt8lXentPQqSEtVaV9yPWLuJ9Q/viewform?usp=dialog" // Replace with your Google Forms link
+              target="_blank"
+              rel="noopener noreferrer"
+              className="py-2 px-4 text-sm font-medium text-white bg-pwga-green rounded-md shadow hover:bg-pwga-green-dark transition-colors"
+            >
+              Apply
+            </a>
+          </div>
 
           {/* Mobile Menu Button */}
           <button
