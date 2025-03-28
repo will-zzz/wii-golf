@@ -17,29 +17,8 @@ const Events = () => {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [pastEvents, setPastEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [bants, setBants] = useState([
-    "Moohawmen has the best swing!",
-    "Daniel is going to win it all!",
-    "What a tournament!",
-    "Yahoo!",
-    "Let's go Tigers!",
-    "Best Wii Golf event ever!",
-    "Can't wait to see the putts!",
-    "Who's bringing the snacks?",
-    "My money's on Salim!",
-    "Hole in one incoming!",
-    "Nathan's form is immaculate, Nathan's form is immaculate, Nathan's form is immaculate, Nathan's form is immaculate, Nathan's form is immaculate",
-  ]);
-
-  const mockRegisteredPlayers = [
-    "Moohawmen Shaw",
-    "Daniel Duarte",
-    "Michael Zhou",
-    "Nathan Han",
-    "Salim Hasanin",
-    "Tristan Perkins",
-    "Will Zakielarz",
-  ];
+  const [bants, setBants] = useState([]);
+  const [players, setPlayers] = useState([]);
 
   const container = {
     hidden: { opacity: 0 },
@@ -80,11 +59,14 @@ const Events = () => {
                 : row["Registration open?"] === "coming soon"
                   ? "Coming Soon"
                   : "Closed",
+            buyin: row["Buy-in"],
             prize: row["Prize Pool"],
             image:
               row.Image && row.Image.includes("id=")
                 ? `https://drive.google.com/thumbnail?id=${row.Image.split("id=")[1]}&sz=w1000`
                 : "/images/bg.png",
+            link: row["Registration Link"],
+            playersLink: row["Registered Players"],
           }));
 
           const upcoming = events.filter(
@@ -103,6 +85,32 @@ const Events = () => {
 
     fetchEvents();
   }, []);
+
+  const fetchPlayersAndBants = async (playersLink) => {
+    const response = await fetch(playersLink);
+    const csvText = await response.text();
+
+    Papa.parse(csvText, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (result) => {
+        const playerNames = result.data.map((row) => row["Name"]); // Adjust column name as needed
+        const playerBants = result.data.map((row) => row["Bants"]); // Adjust column name as needed
+        setPlayers(playerNames);
+        setBants(playerBants);
+      },
+    });
+  };
+
+  const handleEventClick = (event) => {
+    setSelectedEvent(event);
+    if (event.playersLink) {
+      fetchPlayersAndBants(event.playersLink); // Fetch players and bants for the selected event
+    } else {
+      setPlayers([]); // Clear players if no link is provided
+      setBants([]); // Clear bants if no link is provided
+    }
+  };
 
   if (loading) {
     return (
@@ -167,7 +175,7 @@ const Events = () => {
                 key={event.id}
                 variants={item}
                 className="bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
-                onClick={() => setSelectedEvent(event)}
+                onClick={() => handleEventClick(event)}
               >
                 <div className="h-48 overflow-hidden">
                   <img
@@ -192,7 +200,15 @@ const Events = () => {
                     </span>
                   </div>
                   <p className="text-gray-600 mb-3">{event.date}</p>
-                  <p className="text-gray-700 mb-3">{event.location}</p>
+                  <div className="flex justify-between items-center mb-3">
+                    <p className="text-gray-700">{event.location}</p>
+                    <p className="text-gray-700">
+                      Prize Pool:{" "}
+                      <span className="text-pwga-green">
+                        ${calculatePrizePool(event, players)}
+                      </span>
+                    </p>
+                  </div>
                   <p className="text-gray-600 line-clamp-2 mb-4">
                     {event.description}
                   </p>
@@ -278,13 +294,22 @@ const Events = () => {
 
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <p className="text-sm text-gray-500">Prize Pool</p>
-                    <p className="font-bold text-xl text-pwga-green">
-                      {selectedEvent.prize}
-                    </p>
+                    <p className=" text-gray-500">Prize Pool</p>
+                    <div>
+                      <p className="font-bold text-2xl text-pwga-green">
+                        ${calculatePrizePool(selectedEvent, players)}
+                      </p>
+                      <p className="text-sm text-gray-500">Buy-in</p>
+                      <p className="font-bold text-lg text-gray-700">
+                        {selectedEvent.buyin}
+                      </p>
+                    </div>
                   </div>
                   {selectedEvent.status === "Registration Open" && (
-                    <Button className="bg-pwga-green hover:bg-pwga-green/90">
+                    <Button
+                      className="bg-pwga-green hover:bg-pwga-green/90"
+                      onClick={() => window.open(selectedEvent.link, "_blank")}
+                    >
                       Register Now
                     </Button>
                   )}
@@ -302,7 +327,7 @@ const Events = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {mockRegisteredPlayers.map((player, index) => (
+                        {players.map((player, index) => (
                           <TableRow key={index}>
                             <TableCell>{player}</TableCell>
                           </TableRow>
@@ -333,6 +358,20 @@ const Events = () => {
       </div>
     </div>
   );
+};
+
+// Helper function to calculate prize pool
+const calculatePrizePool = (event, registeredPlayers) => {
+  // Remove '$' and ',' from the buy-in string and convert to number
+  const buyInAmount = parseFloat(
+    (event.buyin || "$10").replace("$", "").replace(",", "")
+  );
+
+  // Calculate prize pool
+  const prizePool = buyInAmount * registeredPlayers.length;
+
+  // Ensure at least a minimum prize pool of $70
+  return prizePool;
 };
 
 const DynamicBantsGrid = ({ bants }) => {
