@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { 
   Table,
   TableBody,
@@ -18,7 +17,6 @@ const Events = () => {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [pastEvents, setPastEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [bantText, setBantText] = useState("");
   const [bants, setBants] = useState([
     "Moohawmen has the best swing!", 
     "Daniel is going to win it all!", 
@@ -104,14 +102,6 @@ const Events = () => {
 
     fetchEvents();
   }, []);
-
-  const handleBantSubmit = (e) => {
-    e.preventDefault();
-    if (bantText.trim() !== "") {
-      setBants([...bants, bantText]);
-      setBantText("");
-    }
-  };
 
   if (loading) {
     return (
@@ -255,95 +245,84 @@ const Events = () => {
               animate={{ opacity: 1, scale: 1 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex flex-col md:flex-row">
-                <div className="md:w-2/5">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-2">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {selectedEvent.title}
+                  </h2>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      selectedEvent.status === "Registration Open"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-blue-100 text-blue-700"
+                    }`}
+                  >
+                    {selectedEvent.status}
+                  </span>
+                </div>
+                <p className="text-gray-600 mb-2">{selectedEvent.date}</p>
+                <p className="text-gray-700 mb-4">{selectedEvent.location}</p>
+                
+                <div className="mb-6">
                   <img
                     src={selectedEvent.image}
                     alt={selectedEvent.title}
-                    className="w-full h-full object-cover object-center"
+                    className="w-full h-auto object-cover object-center rounded-lg"
                   />
                 </div>
-                <div className="md:w-3/5 p-6">
-                  <div className="flex justify-between items-start mb-2">
-                    <h2 className="text-2xl font-bold text-gray-900">
-                      {selectedEvent.title}
-                    </h2>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        selectedEvent.status === "Registration Open"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
-                    >
-                      {selectedEvent.status}
-                    </span>
-                  </div>
-                  <p className="text-gray-600 mb-2">{selectedEvent.date}</p>
-                  <p className="text-gray-700 mb-4">{selectedEvent.location}</p>
-                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                    <p className="text-gray-700">{selectedEvent.description}</p>
-                  </div>
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <p className="text-sm text-gray-500">Prize Pool</p>
-                      <p className="font-bold text-xl text-pwga-green">
-                        {selectedEvent.prize}
-                      </p>
-                    </div>
-                    {selectedEvent.status === "Registration Open" && (
-                      <Button className="bg-pwga-green hover:bg-pwga-green/90">
-                        Register Now
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="mt-6 mb-6">
-                    <h3 className="text-lg font-semibold mb-3">Registered Players</h3>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Player Name</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {mockRegisteredPlayers.map((player, index) => (
-                            <TableRow key={index}>
-                              <TableCell>{player}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 mb-6">
-                    <h3 className="text-lg font-semibold mb-3">Bants</h3>
-                    <div className="bg-gray-50 p-4 rounded-lg h-64 relative overflow-hidden mb-4">
-                      <FloatingBants bants={bants} />
-                    </div>
-                    
-                    <form onSubmit={handleBantSubmit} className="flex gap-2">
-                      <Input 
-                        value={bantText}
-                        onChange={(e) => setBantText(e.target.value)}
-                        placeholder="Add your bant..."
-                        className="flex-1"
-                      />
-                      <Button type="submit" className="bg-pwga-blue hover:bg-pwga-blue/90">
-                        Submit
-                      </Button>
-                    </form>
-                  </div>
-                  
-                  <Button
-                    className="w-full py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                    variant="secondary"
-                    onClick={() => setSelectedEvent(null)}
-                  >
-                    Close
-                  </Button>
+                
+                <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                  <p className="text-gray-700">{selectedEvent.description}</p>
                 </div>
+                
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <p className="text-sm text-gray-500">Prize Pool</p>
+                    <p className="font-bold text-xl text-pwga-green">
+                      {selectedEvent.prize}
+                    </p>
+                  </div>
+                  {selectedEvent.status === "Registration Open" && (
+                    <Button className="bg-pwga-green hover:bg-pwga-green/90">
+                      Register Now
+                    </Button>
+                  )}
+                </div>
+
+                <div className="mt-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-3">Registered Players</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Player Name</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {mockRegisteredPlayers.map((player, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{player}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                <div className="mt-6 mb-6">
+                  <h3 className="text-lg font-semibold mb-3">Bants</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg h-64 relative overflow-hidden">
+                    <FloatingBants bants={bants} />
+                  </div>
+                </div>
+                
+                <Button
+                  className="w-full py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                  variant="secondary"
+                  onClick={() => setSelectedEvent(null)}
+                >
+                  Close
+                </Button>
               </div>
             </motion.div>
           </div>
@@ -397,13 +376,13 @@ const FloatingBants = ({ bants }) => {
               transform: 'translate(-50%, -50%)',
             }}
             animate={{
-              x: mousePosition.x ? (mousePosition.x / 20) * (index % 5 - 2) : 0,
-              y: mousePosition.y ? (mousePosition.y / 20) * (index % 3 - 1) : 0,
-              rotate: index % 2 === 0 ? [0, 2, 0, -2, 0] : [0, -2, 0, 2, 0],
+              x: mousePosition.x ? (mousePosition.x / 50) * (index % 5 - 2) : 0,
+              y: mousePosition.y ? (mousePosition.y / 50) * (index % 3 - 1) : 0,
+              rotate: index % 2 === 0 ? [0, 1, 0, -1, 0] : [0, -1, 0, 1, 0],
             }}
             transition={{
-              x: { type: "spring", stiffness: 50, damping: 20 },
-              y: { type: "spring", stiffness: 50, damping: 20 },
+              x: { type: "spring", stiffness: 30, damping: 25 },
+              y: { type: "spring", stiffness: 30, damping: 25 },
               rotate: { duration: 5, repeat: Infinity, ease: "easeInOut" }
             }}
           >
