@@ -66,7 +66,7 @@ const Header: React.FC = () => {
           {/* Apply Button */}
           <div className="hidden md:flex">
             <a
-              href="https://docs.google.com/forms/d/e/1FAIpQLSeHqJNp82Ig2erwn3q3C4qOxt8lXentPQqSEtVaV9yPWLuJ9Q/viewform?usp=dialog" // Replace with your Google Forms link
+              href="https://docs.google.com/forms/d/e/1FAIpQLSeHqJNp82Ig2erwn3q3C4qOxt8lXentPQqSEtVaV9yPWLuJ9Q/viewform?usp=dialog"
               target="_blank"
               rel="noopener noreferrer"
               className="py-2 px-4 text-sm font-medium text-white bg-pwga-green rounded-md shadow hover:bg-pwga-green-dark transition-colors"
@@ -108,6 +108,21 @@ const Header: React.FC = () => {
                 {item.title}
               </Link>
             ))}
+            <a
+              key="apply"
+              href="https://docs.google.com/forms/d/e/1FAIpQLSeHqJNp82Ig2erwn3q3C4qOxt8lXentPQqSEtVaV9yPWLuJ9Q/viewform?usp=dialog"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "block py-3 px-4 text-base font-medium rounded-md transition-colors",
+                location.pathname ===
+                  "https://docs.google.com/forms/d/e/1FAIpQLSeHqJNp82Ig2erwn3q3C4qOxt8lXentPQqSEtVaV9yPWLuJ9Q/viewform?usp=dialog"
+                  ? "text-pwga-green bg-gray-50"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-pwga-green"
+              )}
+            >
+              Apply
+            </a>
           </div>
         </div>
       )}
