@@ -311,8 +311,8 @@ const Events = () => {
 
                 <div className="mt-6 mb-6">
                   <h3 className="text-lg font-semibold mb-3">Bants</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg h-64 relative overflow-hidden">
-                    <FloatingBants bants={bants} />
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <DynamicBantsGrid bants={bants} />
                   </div>
                 </div>
                 
@@ -332,62 +332,37 @@ const Events = () => {
   );
 };
 
-const FloatingBants = ({ bants }) => {
-  const containerRef = useRef(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!containerRef.current) return;
-      
-      const rect = containerRef.current.getBoundingClientRect();
-      setMousePosition({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      });
-    };
-    
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener('mousemove', handleMouseMove);
-      
-      return () => {
-        container.removeEventListener('mousemove', handleMouseMove);
-      };
-    }
-  }, []);
-  
+const DynamicBantsGrid = ({ bants }) => {
   return (
-    <div 
-      ref={containerRef}
-      className="w-full h-full relative"
-    >
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 relative">
       {bants.map((bant, index) => {
-        const initialX = Math.random() * 80 + 10;
-        const initialY = Math.random() * 80 + 10;
+        const isLong = bant.length > 20;
+        const span = isLong ? 'md:col-span-2' : '';
+        const size = index % 4 === 0 ? 'text-lg' : 
+                    index % 3 === 0 ? 'text-base' : 'text-sm';
+        const fontWeight = index % 2 === 0 ? 'font-medium' : 'font-normal';
+        const padding = index % 3 === 0 ? 'p-5' : 'p-4';
+        
+        const bgColors = [
+          'bg-pwga-blue/10',
+          'bg-pwga-green/10', 
+          'bg-blue-50',
+          'bg-green-50',
+          'bg-yellow-50'
+        ];
+        const bgColor = bgColors[index % bgColors.length];
         
         return (
-          <motion.div
+          <div 
             key={index}
-            className="absolute text-sm md:text-base font-medium text-pwga-blue inline-block whitespace-nowrap"
+            className={`${span} ${bgColor} ${padding} rounded-lg shadow-sm ${size} ${fontWeight} text-gray-800 flex items-center justify-center text-center transform transition-transform hover:scale-105`}
             style={{
-              left: `${initialX}%`,
-              top: `${initialY}%`,
-              transform: 'translate(-50%, -50%)',
-            }}
-            animate={{
-              x: mousePosition.x ? (mousePosition.x / 50) * (index % 5 - 2) : 0,
-              y: mousePosition.y ? (mousePosition.y / 50) * (index % 3 - 1) : 0,
-              rotate: index % 2 === 0 ? [0, 1, 0, -1, 0] : [0, -1, 0, 1, 0],
-            }}
-            transition={{
-              x: { type: "spring", stiffness: 30, damping: 25 },
-              y: { type: "spring", stiffness: 30, damping: 25 },
-              rotate: { duration: 5, repeat: Infinity, ease: "easeInOut" }
+              minHeight: '80px',
+              maxHeight: isLong ? '120px' : '100px',
             }}
           >
             {bant}
-          </motion.div>
+          </div>
         );
       })}
     </div>
