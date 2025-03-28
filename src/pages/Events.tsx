@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import Papa from "papaparse";
@@ -334,31 +335,46 @@ const Events = () => {
 
 const DynamicBantsGrid = ({ bants }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 relative">
+    <div className="flex flex-wrap gap-3 p-4">
       {bants.map((bant, index) => {
-        const isLong = bant.length > 20;
-        const span = isLong ? 'md:col-span-2' : '';
-        const size = index % 4 === 0 ? 'text-lg' : 
-                    index % 3 === 0 ? 'text-base' : 'text-sm';
-        const fontWeight = index % 2 === 0 ? 'font-medium' : 'font-normal';
-        const padding = index % 3 === 0 ? 'p-5' : 'p-4';
+        // Calculate size based on text length
+        const length = bant.length;
         
+        // Determine text size and styling based on length and position
+        const size = index % 4 === 0 ? 'text-lg' : 
+                   index % 3 === 0 ? 'text-base' : 'text-sm';
+        const fontWeight = index % 2 === 0 ? 'font-medium' : 'font-normal';
+        
+        // Smaller padding for shorter texts, more padding for longer texts
+        const padding = length < 10 ? 'px-3 py-2' : 
+                      length < 20 ? 'px-4 py-3' : 'px-5 py-4';
+        
+        // Width classes based on text length - shorter texts get smaller widths
+        const width = length < 8 ? 'w-auto' : 
+                    length < 15 ? 'max-w-[120px]' : 
+                    length < 25 ? 'max-w-[180px]' : 
+                    length < 35 ? 'max-w-[240px]' : 'max-w-[300px]';
+        
+        // Various background colors for visual interest
         const bgColors = [
           'bg-pwga-blue/10',
           'bg-pwga-green/10', 
           'bg-blue-50',
           'bg-green-50',
-          'bg-yellow-50'
+          'bg-yellow-50',
+          'bg-purple-50',
+          'bg-pink-50',
+          'bg-orange-50'
         ];
         const bgColor = bgColors[index % bgColors.length];
         
         return (
           <div 
             key={index}
-            className={`${span} ${bgColor} ${padding} rounded-lg shadow-sm ${size} ${fontWeight} text-gray-800 flex items-center justify-center text-center transform transition-transform hover:scale-105`}
+            className={`${bgColor} ${padding} ${width} rounded-lg shadow-sm ${size} ${fontWeight} text-gray-800 flex items-center justify-center text-center transform transition-transform hover:scale-105`}
             style={{
-              minHeight: '80px',
-              maxHeight: isLong ? '120px' : '100px',
+              minHeight: '50px',
+              height: 'fit-content'
             }}
           >
             {bant}
