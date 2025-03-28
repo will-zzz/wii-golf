@@ -12,7 +12,7 @@ const PlayerDetails = () => {
   useEffect(() => {
     const fetchPlayers = async () => {
       const csvUrl =
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?output=csv";
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=509577262&single=true&output=csv";
       const response = await fetch(csvUrl);
       const csvText = await response.text();
 
