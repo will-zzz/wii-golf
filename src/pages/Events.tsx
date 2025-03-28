@@ -1,13 +1,46 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import Papa from "papaparse";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 
 const Events = () => {
   const [activeTab, setActiveTab] = useState("upcoming");
-  const [selectedEvent, setSelectedEvent] = useState(null); // Store the selected event
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [pastEvents, setPastEvents] = useState([]);
-  const [loading, setLoading] = useState(true); // Add a loading state
+  const [loading, setLoading] = useState(true);
+  const [bantText, setBantText] = useState("");
+  const [bants, setBants] = useState([
+    "Moohawmen has the best swing!", 
+    "Daniel is going to win it all!", 
+    "What a tournament!", 
+    "Let's go Tigers!", 
+    "Best Wii Golf event ever!",
+    "Can't wait to see the putts!",
+    "Who's bringing the snacks?",
+    "My money's on Salim!",
+    "Hole in one incoming!",
+    "Nathan's form is immaculate"
+  ]);
+
+  const mockRegisteredPlayers = [
+    "Moohawmen Shaw",
+    "Daniel Duarte",
+    "Michael Zhou",
+    "Nathan Han",
+    "Salim Hasanin",
+    "Tristan Perkins",
+    "Will Zakielarz"
+  ];
 
   const container = {
     hidden: { opacity: 0 },
@@ -26,21 +59,18 @@ const Events = () => {
 
   useEffect(() => {
     const fetchEvents = async () => {
-      setLoading(true); // Set loading to true before fetching
+      setLoading(true);
       const csvUrl =
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=1131600429&single=true&output=csv";
       const response = await fetch(csvUrl);
       const csvText = await response.text();
 
-      // console.log(csvText);
-
-      // Parse CSV data
       Papa.parse(csvText, {
         header: true,
         skipEmptyLines: true,
         complete: (result) => {
           const events = result.data.map((row, index) => ({
-            id: index, // Use the row index as a unique ID
+            id: index,
             title: row.Title,
             date: row.Date,
             location: row.Location,
@@ -55,11 +85,9 @@ const Events = () => {
             image:
               row.Image && row.Image.includes("id=")
                 ? `https://drive.google.com/thumbnail?id=${row.Image.split("id=")[1]}&sz=w1000`
-                : "/images/bg.png", // Convert to direct image link or use a placeholder
-            // : "/images/bg.png", // Convert to direct image link or use a placeholder
+                : "/images/bg.png",
           }));
 
-          // Separate events into upcoming and past based on the "Registration open?" column
           const upcoming = events.filter(
             (event) =>
               event.status === "Registration Open" ||
@@ -69,13 +97,21 @@ const Events = () => {
 
           setUpcomingEvents(upcoming);
           setPastEvents(past);
-          setLoading(false); // Set loading to false after fetching
+          setLoading(false);
         },
       });
     };
 
     fetchEvents();
   }, []);
+
+  const handleBantSubmit = (e) => {
+    e.preventDefault();
+    if (bantText.trim() !== "") {
+      setBants([...bants, bantText]);
+      setBantText("");
+    }
+  };
 
   if (loading) {
     return (
@@ -208,14 +244,13 @@ const Events = () => {
           </motion.div>
         )}
 
-        {/* Event Detail Modal */}
         {selectedEvent && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
             onClick={() => setSelectedEvent(null)}
           >
             <motion.div
-              className="bg-white rounded-lg shadow-2xl overflow-hidden max-w-3xl w-full"
+              className="bg-white rounded-lg shadow-2xl overflow-hidden max-w-4xl w-full max-h-[90vh] overflow-y-auto"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               onClick={(e) => e.stopPropagation()}
@@ -256,23 +291,126 @@ const Events = () => {
                       </p>
                     </div>
                     {selectedEvent.status === "Registration Open" && (
-                      <button className="px-6 py-2 bg-pwga-green text-white rounded-md hover:bg-pwga-green/90 transition-colors">
+                      <Button className="bg-pwga-green hover:bg-pwga-green/90">
                         Register Now
-                      </button>
+                      </Button>
                     )}
                   </div>
-                  <button
+
+                  <div className="mt-6 mb-6">
+                    <h3 className="text-lg font-semibold mb-3">Registered Players</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Player Name</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {mockRegisteredPlayers.map((player, index) => (
+                            <TableRow key={index}>
+                              <TableCell>{player}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 mb-6">
+                    <h3 className="text-lg font-semibold mb-3">Bants</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg h-64 relative overflow-hidden mb-4">
+                      <FloatingBants bants={bants} />
+                    </div>
+                    
+                    <form onSubmit={handleBantSubmit} className="flex gap-2">
+                      <Input 
+                        value={bantText}
+                        onChange={(e) => setBantText(e.target.value)}
+                        placeholder="Add your bant..."
+                        className="flex-1"
+                      />
+                      <Button type="submit" className="bg-pwga-blue hover:bg-pwga-blue/90">
+                        Submit
+                      </Button>
+                    </form>
+                  </div>
+                  
+                  <Button
                     className="w-full py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                    variant="secondary"
                     onClick={() => setSelectedEvent(null)}
                   >
                     Close
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+const FloatingBants = ({ bants }) => {
+  const containerRef = useRef(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!containerRef.current) return;
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      setMousePosition({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
+    };
+    
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('mousemove', handleMouseMove);
+      
+      return () => {
+        container.removeEventListener('mousemove', handleMouseMove);
+      };
+    }
+  }, []);
+  
+  return (
+    <div 
+      ref={containerRef}
+      className="w-full h-full relative"
+    >
+      {bants.map((bant, index) => {
+        const initialX = Math.random() * 80 + 10;
+        const initialY = Math.random() * 80 + 10;
+        
+        return (
+          <motion.div
+            key={index}
+            className="absolute text-sm md:text-base font-medium text-pwga-blue inline-block whitespace-nowrap"
+            style={{
+              left: `${initialX}%`,
+              top: `${initialY}%`,
+              transform: 'translate(-50%, -50%)',
+            }}
+            animate={{
+              x: mousePosition.x ? (mousePosition.x / 20) * (index % 5 - 2) : 0,
+              y: mousePosition.y ? (mousePosition.y / 20) * (index % 3 - 1) : 0,
+              rotate: index % 2 === 0 ? [0, 2, 0, -2, 0] : [0, -2, 0, 2, 0],
+            }}
+            transition={{
+              x: { type: "spring", stiffness: 50, damping: 20 },
+              y: { type: "spring", stiffness: 50, damping: 20 },
+              rotate: { duration: 5, repeat: Infinity, ease: "easeInOut" }
+            }}
+          >
+            {bant}
+          </motion.div>
+        );
+      })}
     </div>
   );
 };
