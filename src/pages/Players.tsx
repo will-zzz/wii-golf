@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import Papa from "papaparse"; // Install with `npm install papaparse`
+import Papa from "papaparse";
 
 const Players = () => {
   const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(true); // Add a loading state
   const navigate = useNavigate();
 
   const container = {
@@ -24,6 +25,7 @@ const Players = () => {
 
   useEffect(() => {
     const fetchPlayers = async () => {
+      setLoading(true); // Set loading to true before fetching
       const csvUrl =
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?output=csv";
       const response = await fetch(csvUrl);
@@ -37,7 +39,6 @@ const Players = () => {
           const formattedPlayers = result.data
             .filter((row) => row["Approved"] === "yes") // Only include approved players
             .map((row) => {
-              // Extract the file ID from the Google Drive link
               const photoId =
                 row.Photo && row.Photo.includes("id=")
                   ? row.Photo.split("id=")[1]
@@ -57,16 +58,25 @@ const Players = () => {
             });
 
           setPlayers(formattedPlayers);
+          setLoading(false); // Set loading to false after fetching
         },
       });
     };
 
     fetchPlayers();
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   const handlePlayerClick = (playerId) => {
     navigate(`/players/${playerId}`);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-xl text-gray-600">Loading players...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-16 bg-gradient-to-b from-white to-gray-50">
@@ -94,7 +104,7 @@ const Players = () => {
         >
           {players.map((player, index) => (
             <motion.div
-              key={player.id || index} // Use player.id if available, otherwise fallback to index
+              key={player.id || index}
               variants={item}
               className="bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
               onClick={() => handlePlayerClick(player.id)}
@@ -114,17 +124,6 @@ const Players = () => {
                   <span className="px-3 py-1 bg-pwga-green/10 text-pwga-green rounded-full text-sm font-medium">
                     Rank #
                   </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-gray-50 p-2 rounded">
-                    <p className="text-sm text-gray-500">Wins</p>
-                  </div>
-                  <div className="bg-gray-50 p-2 rounded">
-                    <p className="text-sm text-gray-500">Top 10</p>
-                  </div>
-                  <div className="bg-gray-50 p-2 rounded">
-                    <p className="text-sm text-gray-500">Avg</p>
-                  </div>
                 </div>
               </div>
             </motion.div>
