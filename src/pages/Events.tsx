@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import Papa from "papaparse";
@@ -337,25 +336,14 @@ const DynamicBantsGrid = ({ bants }) => {
   return (
     <div className="flex flex-wrap gap-3 p-4">
       {bants.map((bant, index) => {
-        // Calculate size based on text length
         const length = bant.length;
-        
-        // Determine text size and styling based on length and position
-        const size = index % 4 === 0 ? 'text-lg' : 
-                   index % 3 === 0 ? 'text-base' : 'text-sm';
         const fontWeight = index % 2 === 0 ? 'font-medium' : 'font-normal';
-        
-        // Smaller padding for shorter texts, more padding for longer texts
         const padding = length < 10 ? 'px-3 py-2' : 
                       length < 20 ? 'px-4 py-3' : 'px-5 py-4';
-        
-        // Width classes based on text length - shorter texts get smaller widths
         const width = length < 8 ? 'w-auto' : 
                     length < 15 ? 'max-w-[120px]' : 
                     length < 25 ? 'max-w-[180px]' : 
                     length < 35 ? 'max-w-[240px]' : 'max-w-[300px]';
-        
-        // Various background colors for visual interest
         const bgColors = [
           'bg-pwga-blue/10',
           'bg-pwga-green/10', 
@@ -371,10 +359,9 @@ const DynamicBantsGrid = ({ bants }) => {
         return (
           <div 
             key={index}
-            className={`${bgColor} ${padding} ${width} rounded-lg shadow-sm ${size} ${fontWeight} text-gray-800 flex items-center justify-center text-center transform transition-transform hover:scale-105`}
+            className={`${bgColor} ${padding} ${width} rounded-lg shadow-sm text-base ${fontWeight} text-gray-800 flex items-center justify-center text-center transform transition-transform hover:scale-105 h-full`}
             style={{
-              minHeight: '50px',
-              height: 'fit-content'
+              minHeight: '60px',
             }}
           >
             {bant}
