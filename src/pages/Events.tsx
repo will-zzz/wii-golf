@@ -2,13 +2,13 @@ import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
 } from "@/components/ui/table";
 
 const Events = () => {
@@ -18,16 +18,17 @@ const Events = () => {
   const [pastEvents, setPastEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bants, setBants] = useState([
-    "Moohawmen has the best swing!", 
-    "Daniel is going to win it all!", 
-    "What a tournament!", 
-    "Let's go Tigers!", 
+    "Moohawmen has the best swing!",
+    "Daniel is going to win it all!",
+    "What a tournament!",
+    "Yahoo!",
+    "Let's go Tigers!",
     "Best Wii Golf event ever!",
     "Can't wait to see the putts!",
     "Who's bringing the snacks?",
     "My money's on Salim!",
     "Hole in one incoming!",
-    "Nathan's form is immaculate"
+    "Nathan's form is immaculate, Nathan's form is immaculate, Nathan's form is immaculate, Nathan's form is immaculate, Nathan's form is immaculate",
   ]);
 
   const mockRegisteredPlayers = [
@@ -37,7 +38,7 @@ const Events = () => {
     "Nathan Han",
     "Salim Hasanin",
     "Tristan Perkins",
-    "Will Zakielarz"
+    "Will Zakielarz",
   ];
 
   const container = {
@@ -262,7 +263,7 @@ const Events = () => {
                 </div>
                 <p className="text-gray-600 mb-2">{selectedEvent.date}</p>
                 <p className="text-gray-700 mb-4">{selectedEvent.location}</p>
-                
+
                 <div className="mb-6">
                   <img
                     src={selectedEvent.image}
@@ -270,11 +271,11 @@ const Events = () => {
                     className="w-full h-auto object-cover object-center rounded-lg"
                   />
                 </div>
-                
+
                 <div className="bg-gray-50 p-4 rounded-lg mb-4">
                   <p className="text-gray-700">{selectedEvent.description}</p>
                 </div>
-                
+
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <p className="text-sm text-gray-500">Prize Pool</p>
@@ -290,7 +291,9 @@ const Events = () => {
                 </div>
 
                 <div className="mt-6 mb-6">
-                  <h3 className="text-lg font-semibold mb-3">Registered Players</h3>
+                  <h3 className="text-lg font-semibold mb-3">
+                    Registered Players
+                  </h3>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <Table>
                       <TableHeader>
@@ -315,7 +318,7 @@ const Events = () => {
                     <DynamicBantsGrid bants={bants} />
                   </div>
                 </div>
-                
+
                 <Button
                   className="w-full py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                   variant="secondary"
@@ -337,31 +340,39 @@ const DynamicBantsGrid = ({ bants }) => {
     <div className="flex flex-wrap gap-3 p-4">
       {bants.map((bant, index) => {
         const length = bant.length;
-        const fontWeight = index % 2 === 0 ? 'font-medium' : 'font-normal';
-        const padding = length < 10 ? 'px-3 py-2' : 
-                      length < 20 ? 'px-4 py-3' : 'px-5 py-4';
-        const width = length < 8 ? 'w-auto' : 
-                    length < 15 ? 'max-w-[120px]' : 
-                    length < 25 ? 'max-w-[180px]' : 
-                    length < 35 ? 'max-w-[240px]' : 'max-w-[300px]';
+        const padding =
+          length < 10 ? "px-3 py-2" : length < 20 ? "px-4 py-3" : "px-5 py-4";
+        const width =
+          length < 8
+            ? "w-auto"
+            : length < 15
+              ? "max-w-[120px]"
+              : length < 25
+                ? "max-w-[180px]"
+                : length < 35
+                  ? "max-w-[240px]"
+                  : "max-w-[300px]";
         const bgColors = [
-          'bg-pwga-blue/10',
-          'bg-pwga-green/10', 
-          'bg-blue-50',
-          'bg-green-50',
-          'bg-yellow-50',
-          'bg-purple-50',
-          'bg-pink-50',
-          'bg-orange-50'
+          "bg-pwga-blue/10",
+          "bg-pwga-green/10",
+          "bg-blue-50",
+          "bg-green-50",
+          "bg-yellow-50",
+          "bg-purple-50",
+          "bg-pink-50",
+          "bg-orange-50",
         ];
         const bgColor = bgColors[index % bgColors.length];
-        
+
         return (
-          <div 
+          <div
             key={index}
-            className={`${bgColor} ${padding} ${width} rounded-lg shadow-sm text-base ${fontWeight} text-gray-800 flex items-center justify-center text-center transform transition-transform hover:scale-105 h-full`}
+            className={`${bgColor} ${padding} ${width} rounded-lg shadow-sm text-base text-gray-800 flex items-center justify-center text-center transform transition-transform hover:scale-105`}
             style={{
-              minHeight: '60px',
+              height: "100px", // Fixed height for all bants
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
             {bant}
