@@ -52,10 +52,12 @@ const Events = () => {
               const playersAndBants = row["Registered Players"]
                 ? await fetchPlayersAndBants(row["Registered Players"])
                 : [];
-              const players = playersAndBants.map(
-                (entry: { name: string; bants: string }) => entry.name
-              );
-              const bants = playersAndBants.map((entry) => entry.bants);
+              const players = playersAndBants
+                .filter((entry) => entry.name)
+                .map((entry: { name: string; bants: string }) => entry.name);
+              const bants = playersAndBants
+                .filter((entry) => entry.bants)
+                .map((entry) => entry.bants);
 
               return {
                 id: index,
@@ -108,10 +110,16 @@ const Events = () => {
         skipEmptyLines: true,
         complete: (result) => {
           resolve(
-            result.data.map((row) => ({
-              name: row["Name"], // Adjust column name if needed
-              bants: row["Bants"], // Adjust column name if needed
-            }))
+            result.data
+              .filter((row) => {
+                const name = row["Name"] ? row["Name"].trim() : "";
+                const bants = row["Bants"] ? row["Bants"].trim() : "";
+                return name !== "" || bants !== "";
+              })
+              .map((row) => ({
+                name: row["Name"] ? row["Name"].trim() : "",
+                bants: row["Bants"] ? row["Bants"].trim() : "",
+              }))
           );
         },
       });
