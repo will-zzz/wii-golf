@@ -46,38 +46,46 @@ const Events = () => {
       Papa.parse(csvText, {
         header: true,
         skipEmptyLines: true,
-        complete: (result) => {
-          const events = result.data.map((row, index) => ({
-            id: index,
-            title: row.Title,
-            date: row.Date,
-            location: row.Location,
-            description: row.Description,
-            status:
-              row["Registration open?"] === "yes"
-                ? "Registration Open"
-                : row["Registration open?"] === "coming soon"
-                  ? "Coming Soon"
-                  : "Closed",
-            buyin: row["Buy-in"],
-            prize: row["Prize Pool"],
-            image:
-              row.Image && row.Image.includes("id=")
-                ? `https://drive.google.com/thumbnail?id=${row.Image.split("id=")[1]}&sz=w1000`
-                : "/images/bg.png",
-            link: row["Registration Link"],
-            playersLink: row["Registered Players"],
-          }));
+        complete: async (result) => {
+          const events = await Promise.all(
+            result.data.map(async (row, index) => {
+              const playersAndBants = row["Registered Players"]
+                ? await fetchPlayersAndBants(row["Registered Players"])
+                : [];
+              const players = playersAndBants.map(
+                (entry: { name: string; bants: string }) => entry.name
+              );
+              const bants = playersAndBants.map((entry) => entry.bants);
 
-          const upcoming = events.filter(
-            (event) =>
-              event.status === "Registration Open" ||
-              event.status === "Coming Soon"
+              return {
+                id: index,
+                title: row.Title,
+                date: row.Date,
+                location: row.Location,
+                description: row.Description,
+                status:
+                  row["Registration open?"] === "yes"
+                    ? "Registration Open"
+                    : row["Registration open?"] === "coming soon"
+                      ? "Coming Soon"
+                      : "Closed",
+                buyin: row["Buy-in"],
+                image:
+                  row.Image && row.Image.includes("id=")
+                    ? `https://drive.google.com/thumbnail?id=${
+                        row.Image.split("id=")[1]
+                      }&sz=w1000`
+                    : "/images/bg.png",
+                link: row["Registration Link"],
+                playersLink: row["Registered Players"],
+                players,
+                bants,
+              };
+            })
           );
-          const past = events.filter((event) => event.status === "Closed");
 
-          setUpcomingEvents(upcoming);
-          setPastEvents(past);
+          setUpcomingEvents(events.filter((e) => e.status !== "Closed"));
+          setPastEvents(events.filter((e) => e.status === "Closed"));
           setLoading(false);
         },
       });
@@ -86,30 +94,28 @@ const Events = () => {
     fetchEvents();
   }, []);
 
-  const fetchPlayersAndBants = async (playersLink) => {
+  const fetchPlayersAndBants = async (
+    playersLink: string
+  ): Promise<{ name: string; bants: string }[]> => {
+    if (!playersLink) return [];
+
     const response = await fetch(playersLink);
     const csvText = await response.text();
 
-    Papa.parse(csvText, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (result) => {
-        const playerNames = result.data.map((row) => row["Name"]); // Adjust column name as needed
-        const playerBants = result.data.map((row) => row["Bants"]); // Adjust column name as needed
-        setPlayers(playerNames);
-        setBants(playerBants);
-      },
+    return new Promise((resolve) => {
+      Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (result) => {
+          resolve(
+            result.data.map((row) => ({
+              name: row["Name"], // Adjust column name if needed
+              bants: row["Bants"], // Adjust column name if needed
+            }))
+          );
+        },
+      });
     });
-  };
-
-  const handleEventClick = (event) => {
-    setSelectedEvent(event);
-    if (event.playersLink) {
-      fetchPlayersAndBants(event.playersLink); // Fetch players and bants for the selected event
-    } else {
-      setPlayers([]); // Clear players if no link is provided
-      setBants([]); // Clear bants if no link is provided
-    }
   };
 
   if (loading) {
@@ -175,7 +181,7 @@ const Events = () => {
                 key={event.id}
                 variants={item}
                 className="bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-2 hover:shadow-xl"
-                onClick={() => handleEventClick(event)}
+                onClick={() => setSelectedEvent(event)}
               >
                 <div className="h-48 overflow-hidden">
                   <img
@@ -205,7 +211,7 @@ const Events = () => {
                     <p className="text-gray-700">
                       Prize Pool:{" "}
                       <span className="text-pwga-green">
-                        ${calculatePrizePool(event, players)}
+                        ${calculatePrizePool(event)}
                       </span>
                     </p>
                   </div>
@@ -289,7 +295,12 @@ const Events = () => {
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                  <p className="text-gray-700">{selectedEvent.description}</p>
+                  <p
+                    style={{ whiteSpace: "pre-wrap" }}
+                    className="text-gray-700"
+                  >
+                    {selectedEvent.description}
+                  </p>
                 </div>
 
                 <div className="flex justify-between items-center mb-6">
@@ -297,11 +308,11 @@ const Events = () => {
                     <p className=" text-gray-500">Prize Pool</p>
                     <div>
                       <p className="font-bold text-2xl text-pwga-green">
-                        ${calculatePrizePool(selectedEvent, players)}
+                        ${calculatePrizePool(selectedEvent)}
                       </p>
                       <p className="text-sm text-gray-500">Buy-in</p>
                       <p className="font-bold text-lg text-gray-700">
-                        {selectedEvent.buyin}
+                        ${selectedEvent.buyin}
                       </p>
                     </div>
                   </div>
@@ -327,7 +338,7 @@ const Events = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {players.map((player, index) => (
+                        {selectedEvent.players.map((player, index) => (
                           <TableRow key={index}>
                             <TableCell>{player}</TableCell>
                           </TableRow>
@@ -340,7 +351,7 @@ const Events = () => {
                 <div className="mt-6 mb-6">
                   <h3 className="text-lg font-semibold mb-3">Bants</h3>
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <DynamicBantsGrid bants={bants} />
+                    <DynamicBantsGrid bants={selectedEvent.bants} />
                   </div>
                 </div>
 
@@ -360,17 +371,8 @@ const Events = () => {
   );
 };
 
-// Helper function to calculate prize pool
-const calculatePrizePool = (event, registeredPlayers) => {
-  // Remove '$' and ',' from the buy-in string and convert to number
-  const buyInAmount = parseFloat(
-    (event.buyin || "$10").replace("$", "").replace(",", "")
-  );
-
-  // Calculate prize pool
-  const prizePool = buyInAmount * registeredPlayers.length;
-
-  // Ensure at least a minimum prize pool of $70
+const calculatePrizePool = (event) => {
+  const prizePool = event.players.length * parseFloat(event.buyin || 0);
   return prizePool;
 };
 
