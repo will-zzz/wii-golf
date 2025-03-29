@@ -48,17 +48,45 @@ export const calculatePlayerPoints = (
     // Sort players by score (ascending)
     playersInRound.sort((a, b) => a.score - b.score);
 
-    // Find the lowest score in the round
-    const lowestScore = playersInRound[0].score;
+    // First, group players by their scores to handle ties properly
+    const scoreGroups: Record<number, string[]> = {};
 
-    // Assign points based on position
-    playersInRound.forEach((player, index) => {
-      const position = index + 1; // 1-based position
+    playersInRound.forEach((player) => {
+      if (!scoreGroups[player.score]) {
+        scoreGroups[player.score] = [];
+      }
+      scoreGroups[player.score].push(player.name);
+    });
+
+    // Now assign points based on positions, accounting for ties correctly
+    let currentPosition = 1;
+
+    // Process scores in ascending order (since lower is better in golf)
+    const uniqueScores = Object.keys(scoreGroups)
+      .map(Number)
+      .sort((a, b) => a - b);
+
+    uniqueScores.forEach((score) => {
+      const playersWithThisScore = scoreGroups[score];
+
+      // Determine points for the current position
       const points =
-        position === 1 ? 10 : position === 2 ? 5 : position === 3 ? 3 : 1; // Weighted scoring
+        currentPosition === 1
+          ? 10 // 1st place gets 10 points
+          : currentPosition === 2
+            ? 5 // 2nd place gets 5 points
+            : currentPosition === 3
+              ? 3 // 3rd place gets 3 points
+              : 1; // Everyone else gets 1 point
 
-      // Assign points to the player
-      playerPoints[player.name] = (playerPoints[player.name] || 0) + points;
+      // Assign the same points to all players with this score
+      playersWithThisScore.forEach((playerName) => {
+        playerPoints[playerName] = (playerPoints[playerName] || 0) + points;
+      });
+
+      // Advance position by the number of players in this group
+      // This ensures the next group gets the correct position
+      currentPosition += playersWithThisScore.length;
     });
   });
 
@@ -124,10 +152,6 @@ export const calculatePlayerStats = (
       // Update player stats
       playerStats[player.name].gamesPlayed += 1;
       playerStats[player.name].totalScore += player.score;
-
-      console.log(
-        `Name: ${player.name}, Games Played: ${playerStats[player.name].gamesPlayed}`
-      );
 
       // Check if this player is a winner (has the lowest score)
       if (player.score === lowestScore) {
