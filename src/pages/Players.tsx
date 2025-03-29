@@ -63,7 +63,12 @@ const Players = () => {
                 name: row["Player 4 Name"],
                 score: parseInt(row["Player 4 Score"]) || Infinity,
               },
-            ].filter((player) => player.name); // Filter out empty player entries
+            ].filter((player) => player.name && player.score !== Infinity); // Filter out players with no name or invalid scores
+
+            // Skip this match if there are fewer than 2 players with valid scores
+            if (playersInRound.length < 2) {
+              return;
+            }
 
             // Sort players by score (ascending)
             playersInRound.sort((a, b) => a.score - b.score);
@@ -117,14 +122,15 @@ const Players = () => {
                 name: playerName,
                 image: photoId
                   ? `https://drive.google.com/thumbnail?id=${photoId}&sz=w1000` // Convert to direct image link
-                  : "/images/bg.png", // Use a placeholder if no valid photo
+                  : null, // Set to null if no valid photo
                 bio: row.Bio,
                 favoriteShot: row["Favorite Golf Shot"],
                 hero: row["Biggest Hero"],
                 foe: row["Greatest Foe"],
                 points, // Store points for sorting
               };
-            });
+            })
+            .filter((player) => player.image); // Filter out players without an image
 
           // Sort players by points (descending)
           formattedPlayers.sort((a, b) => b.points - a.points);
@@ -141,7 +147,6 @@ const Players = () => {
             ) {
               // If tied with the previous player, assign the same rank
               player.rank = formattedPlayers[index - 1].rank;
-              currentRank++;
             } else {
               // Otherwise, assign the current rank
               player.rank =
