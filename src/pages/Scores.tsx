@@ -72,7 +72,7 @@ const getAllPlayers = () => {
 const Scores: React.FC = () => {
   // States for filters
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
-  const [playerFilter, setPlayerFilter] = useState<string>("");
+  const [playerFilter, setPlayerFilter] = useState<string>("all_players");
   const [courseSearch, setCourseSearch] = useState<string>("");
   
   // Animation variants
@@ -97,8 +97,8 @@ const Scores: React.FC = () => {
       }
     }
 
-    // Filter by player if playerFilter is set
-    if (playerFilter) {
+    // Filter by player if playerFilter is set and not "all_players"
+    if (playerFilter && playerFilter !== "all_players") {
       const hasPlayer = score.players.some(player => 
         player.name === playerFilter
       );
@@ -116,7 +116,7 @@ const Scores: React.FC = () => {
   // Reset all filters
   const resetFilters = () => {
     setDateFilter(undefined);
-    setPlayerFilter("");
+    setPlayerFilter("all_players");
     setCourseSearch("");
   };
 
@@ -172,7 +172,7 @@ const Scores: React.FC = () => {
                 <SelectValue placeholder="Filter by player" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Players</SelectItem>
+                <SelectItem value="all_players">All Players</SelectItem>
                 {getAllPlayers().map((player, index) => (
                   <SelectItem key={index} value={player}>
                     {player}
@@ -194,7 +194,7 @@ const Scores: React.FC = () => {
         </div>
         
         {/* Reset Filters Button - Only show if filters are applied */}
-        {(dateFilter || playerFilter || courseSearch) && (
+        {(dateFilter || playerFilter !== "all_players" || courseSearch) && (
           <div className="flex justify-end">
             <Button 
               variant="ghost" 
