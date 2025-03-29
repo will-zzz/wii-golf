@@ -2,37 +2,105 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
-import Papa from "papaparse"; // Install with `npm install papaparse`
+import Papa from "papaparse";
 
 const PlayerDetails = () => {
   const { id } = useParams();
   const [players, setPlayers] = useState([]);
   const [player, setPlayer] = useState(null);
+  const [rank, setRank] = useState("Unranked"); // State to store the player's rank
 
   useEffect(() => {
-    const fetchPlayers = async () => {
-      const csvUrl =
+    const fetchPlayersAndScores = async () => {
+      const playersCsvUrl =
         "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=509577262&single=true&output=csv";
-      const response = await fetch(csvUrl);
-      const csvText = await response.text();
+      const scoresCsvUrl =
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=1898345264&single=true&output=csv";
 
-      // Parse CSV data
-      Papa.parse(csvText, {
+      // Fetch players data
+      const playersResponse = await fetch(playersCsvUrl);
+      const playersCsvText = await playersResponse.text();
+
+      // Fetch scores data
+      const scoresResponse = await fetch(scoresCsvUrl);
+      const scoresCsvText = await scoresResponse.text();
+
+      // Parse scores data
+      const playerPoints = {};
+      Papa.parse(scoresCsvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (result) => {
+          result.data.forEach((row) => {
+            const playersInRound = [
+              {
+                name: row["Player 1 Name"],
+                score: parseInt(row["Player 1 Score"]) || Infinity,
+              },
+              {
+                name: row["Player 2 Name"],
+                score: parseInt(row["Player 2 Score"]) || Infinity,
+              },
+              {
+                name: row["Player 3 Name"],
+                score: parseInt(row["Player 3 Score"]) || Infinity,
+              },
+              {
+                name: row["Player 4 Name"],
+                score: parseInt(row["Player 4 Score"]) || Infinity,
+              },
+            ].filter((player) => player.name); // Filter out empty player entries
+
+            // Sort players by score (ascending)
+            playersInRound.sort((a, b) => a.score - b.score);
+
+            // Find the lowest score in the round
+            const lowestScore = playersInRound[0].score;
+
+            // Assign points based on position
+            playersInRound.forEach((player, index) => {
+              const position = index + 1; // 1-based position
+              const points =
+                position === 1
+                  ? 10
+                  : position === 2
+                    ? 5
+                    : position === 3
+                      ? 3
+                      : 1; // Weighted scoring
+
+              // If the player is tied for the lowest score, assign them the same points as the first position
+              if (player.score === lowestScore) {
+                playerPoints[player.name] =
+                  (playerPoints[player.name] || 0) + 10;
+              } else {
+                playerPoints[player.name] =
+                  (playerPoints[player.name] || 0) + points;
+              }
+            });
+          });
+        },
+      });
+
+      // Parse players data
+      Papa.parse(playersCsvText, {
         header: true,
         skipEmptyLines: true,
         complete: (result) => {
           const formattedPlayers = result.data
             .filter((row) => row["Approved"] === "yes") // Only include approved players
             .map((row) => {
-              // Extract the file ID from the Google Drive link
               const photoId =
                 row.Photo && row.Photo.includes("id=")
                   ? row.Photo.split("id=")[1]
                   : null;
 
+              const playerName = row.Name;
+              const points = playerPoints[playerName] || 0; // Get the total points or default to 0
+
               return {
-                id: row.Name.replace(/\s+/g, ""), // Remove spaces from the player's name to use as the ID
-                name: row.Name,
+                id: playerName.replace(/\s+/g, ""), // Remove spaces from the player's name to use as the ID
+                name: playerName,
                 image: photoId
                   ? `https://drive.google.com/thumbnail?id=${photoId}&sz=w1000` // Convert to direct image link
                   : "/images/bg.png", // Use a placeholder if no valid photo
@@ -40,19 +108,46 @@ const PlayerDetails = () => {
                 favoriteShot: row["Favorite Golf Shot"],
                 hero: row["Biggest Hero"],
                 foe: row["Greatest Foe"],
+                points, // Store points for sorting
               };
             });
+
+          // Sort players by points (descending)
+          formattedPlayers.sort((a, b) => b.points - a.points);
+
+          // Assign rank based on position in the sorted list, handling ties
+          let currentRank = 1;
+          formattedPlayers.forEach((player, index) => {
+            if (
+              index > 0 &&
+              formattedPlayers[index].points ===
+                formattedPlayers[index - 1].points
+            ) {
+              // If tied with the previous player, assign the same rank
+              player.rank = formattedPlayers[index - 1].rank;
+            } else {
+              // Otherwise, assign the current rank
+              player.rank =
+                player.points > 0 ? `Rank #${currentRank}` : "Unranked";
+              currentRank++; // Increment rank for the next player
+            }
+          });
 
           setPlayers(formattedPlayers);
 
           // Find the player after the players state is updated
           const foundPlayer = formattedPlayers.find((p) => p.id === id);
           setPlayer(foundPlayer);
+
+          // Set the player's rank
+          if (foundPlayer) {
+            setRank(foundPlayer.rank);
+          }
         },
       });
     };
 
-    fetchPlayers();
+    fetchPlayersAndScores();
   }, [id]);
 
   if (!player) {
@@ -89,7 +184,6 @@ const PlayerDetails = () => {
               />
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 md:hidden">
                 <h1 className="text-2xl font-bold text-white">{player.name}</h1>
-                <p className="text-white/90">{player.nickname}</p>
               </div>
             </div>
 
@@ -99,19 +193,20 @@ const PlayerDetails = () => {
                   <h1 className="text-3xl font-bold text-gray-900">
                     {player.name}
                   </h1>
-                  <span className="px-3 py-1 bg-pwga-green/10 text-pwga-green rounded-full text-sm font-medium">
-                    Rank #
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      player.rank === "Rank #1"
+                        ? "bg-yellow-200 text-yellow-600"
+                        : player.rank === "Rank #2"
+                          ? "bg-gray-200 text-gray-700"
+                          : player.rank === "Rank #3"
+                            ? "bg-yellow-600 text-yellow-900"
+                            : "bg-pwga-green/10 text-pwga-green"
+                    }`}
+                  >
+                    {rank}
                   </span>
                 </div>
-                {/* <p className="text-pwga-blue font-medium text-lg mb-6">
-                  {player.nickname} • {player.country}
-                </p> */}
-              </div>
-
-              <div className="md:hidden flex justify-end mt-2 mb-4">
-                <span className="px-3 py-1 bg-pwga-green/10 text-pwga-green rounded-full text-sm font-medium">
-                  Rank #
-                </span>
               </div>
 
               <div className="space-y-6">
