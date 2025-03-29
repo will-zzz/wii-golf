@@ -1,11 +1,10 @@
-
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import ScoreCard from "@/components/ScoreCard";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, X, Trophy } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -69,11 +68,27 @@ const getAllPlayers = () => {
   return Array.from(playerSet);
 };
 
+// Get all winners from mockScores
+const getAllWinners = () => {
+  const winnerSet = new Set<string>();
+  
+  mockScores.forEach(score => {
+    const lowestScore = Math.min(...score.players.map(player => player.score));
+    const winners = score.players.filter(player => player.score === lowestScore);
+    
+    winners.forEach(winner => {
+      winnerSet.add(winner.name);
+    });
+  });
+  
+  return Array.from(winnerSet);
+};
+
 const Scores: React.FC = () => {
   // States for filters
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [playerFilter, setPlayerFilter] = useState<string>("all_players");
-  const [courseSearch, setCourseSearch] = useState<string>("");
+  const [winnerSearch, setWinnerSearch] = useState<string>("");
   
   // Animation variants
   const pageVariants = {
@@ -105,9 +120,18 @@ const Scores: React.FC = () => {
       if (!hasPlayer) return false;
     }
 
-    // Filter by course name if courseSearch is set
-    if (courseSearch) {
-      return score.course.toLowerCase().includes(courseSearch.toLowerCase());
+    // Filter by winner name if winnerSearch is set
+    if (winnerSearch) {
+      // Find the lowest score
+      const lowestScore = Math.min(...score.players.map(player => player.score));
+      
+      // Get winners (anyone with the lowest score)
+      const winners = score.players.filter(player => player.score === lowestScore);
+      
+      // Check if any winner's name includes the search term
+      return winners.some(winner => 
+        winner.name.toLowerCase().includes(winnerSearch.toLowerCase())
+      );
     }
 
     return true;
@@ -117,7 +141,7 @@ const Scores: React.FC = () => {
   const resetFilters = () => {
     setDateFilter(undefined);
     setPlayerFilter("all_players");
-    setCourseSearch("");
+    setWinnerSearch("");
   };
 
   return (
@@ -182,19 +206,22 @@ const Scores: React.FC = () => {
             </Select>
           </div>
           
-          {/* Course Search */}
+          {/* Winner Search */}
           <div className="w-full md:w-auto flex-1">
-            <Input
-              placeholder="Search by course"
-              value={courseSearch}
-              onChange={(e) => setCourseSearch(e.target.value)}
-              className="w-full"
-            />
+            <div className="relative">
+              <Trophy className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-yellow-500" />
+              <Input
+                placeholder="Search by winner"
+                value={winnerSearch}
+                onChange={(e) => setWinnerSearch(e.target.value)}
+                className="w-full pl-10"
+              />
+            </div>
           </div>
         </div>
         
         {/* Reset Filters Button - Only show if filters are applied */}
-        {(dateFilter || playerFilter !== "all_players" || courseSearch) && (
+        {(dateFilter || playerFilter !== "all_players" || winnerSearch) && (
           <div className="flex justify-end">
             <Button 
               variant="ghost" 

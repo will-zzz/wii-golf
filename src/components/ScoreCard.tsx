@@ -1,6 +1,7 @@
 
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Trophy } from "lucide-react";
 
 interface Player {
   name: string;
@@ -15,6 +16,13 @@ interface ScoreCardProps {
 }
 
 const ScoreCard: React.FC<ScoreCardProps> = ({ imageUrl, date, course, players }) => {
+  // Find the lowest score
+  const lowestScore = Math.min(...players.map(player => player.score));
+  
+  // Determine winners (all players with the lowest score)
+  const winners = players.filter(player => player.score === lowestScore);
+  const winnerNames = winners.map(winner => winner.name);
+
   return (
     <Card className="mb-6 overflow-hidden">
       <div className="flex flex-col md:flex-row">
@@ -32,6 +40,11 @@ const ScoreCard: React.FC<ScoreCardProps> = ({ imageUrl, date, course, players }
           <div className="mb-4">
             <h3 className="text-xl font-semibold">{course}</h3>
             <p className="text-gray-500">{date}</p>
+            {winners.length > 0 && (
+              <p className="text-pwga-green font-medium mt-1">
+                Winner{winners.length > 1 ? 's' : ''}: {winnerNames.join(', ')}
+              </p>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -39,7 +52,12 @@ const ScoreCard: React.FC<ScoreCardProps> = ({ imageUrl, date, course, players }
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {players.map((player, index) => (
                 <div key={index} className="flex justify-between border-b pb-1">
-                  <span>{player.name}</span>
+                  <span className="flex items-center gap-1">
+                    {player.score === lowestScore && (
+                      <Trophy className="h-4 w-4 text-yellow-500" />
+                    )}
+                    {player.name}
+                  </span>
                   <span className="font-bold">{player.score}</span>
                 </div>
               ))}
