@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,7 @@ const navItems = [
   { title: "About", href: "/about" },
   { title: "Players", href: "/players" },
   { title: "Events", href: "/events" },
+  { title: "Scores", href: "/scores" },
 ];
 
 const Header: React.FC = () => {

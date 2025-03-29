@@ -10,6 +10,7 @@ import About from "./pages/About";
 import Players from "./pages/Players";
 import PlayerDetails from "./pages/PlayerDetails";
 import Events from "./pages/Events";
+import Scores from "./pages/Scores";
 import NotFound from "./pages/NotFound";
 
 // Animation libraries
@@ -33,6 +34,7 @@ const App = () => (
                 <Route path="/players" element={<Players />} />
                 <Route path="/players/:id" element={<PlayerDetails />} />
                 <Route path="/events" element={<Events />} />
+                <Route path="/scores" element={<Scores />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
