@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Award, Calendar, Calculator } from "lucide-react";
 import Papa from "papaparse";
 
 const PlayerDetails = () => {
@@ -9,6 +10,11 @@ const PlayerDetails = () => {
   const [players, setPlayers] = useState([]);
   const [player, setPlayer] = useState(null);
   const [rank, setRank] = useState("Unranked"); // State to store the player's rank
+  const [stats, setStats] = useState({
+    gamesPlayed: 0,
+    wins: 0,
+    averageScore: 0,
+  });
 
   useEffect(() => {
     const fetchPlayersAndScores = async () => {
@@ -27,6 +33,8 @@ const PlayerDetails = () => {
 
       // Parse scores data
       const playerPoints = {};
+      const playerStats = {};
+      
       Papa.parse(scoresCsvText, {
         header: true,
         skipEmptyLines: true,
@@ -69,13 +77,24 @@ const PlayerDetails = () => {
                       ? 3
                       : 1; // Weighted scoring
 
-              // If the player is tied for the lowest score, assign them the same points as the first position
+              // Track player stats
+              if (!playerStats[player.name]) {
+                playerStats[player.name] = {
+                  gamesPlayed: 0,
+                  wins: 0,
+                  totalScore: 0,
+                };
+              }
+              
+              playerStats[player.name].gamesPlayed += 1;
+              playerStats[player.name].totalScore += player.score;
+              
+              // Check if this player is a winner (has the lowest score)
               if (player.score === lowestScore) {
-                playerPoints[player.name] =
-                  (playerPoints[player.name] || 0) + 10;
+                playerStats[player.name].wins += 1;
+                playerPoints[player.name] = (playerPoints[player.name] || 0) + 10;
               } else {
-                playerPoints[player.name] =
-                  (playerPoints[player.name] || 0) + points;
+                playerPoints[player.name] = (playerPoints[player.name] || 0) + points;
               }
             });
           });
@@ -142,6 +161,19 @@ const PlayerDetails = () => {
           // Set the player's rank
           if (foundPlayer) {
             setRank(foundPlayer.rank);
+            
+            // Set the player's stats
+            const playerName = foundPlayer.name;
+            if (playerStats[playerName]) {
+              const playerStat = playerStats[playerName];
+              setStats({
+                gamesPlayed: playerStat.gamesPlayed,
+                wins: playerStat.wins,
+                averageScore: playerStat.gamesPlayed > 0 
+                  ? Math.round((playerStat.totalScore / playerStat.gamesPlayed) * 10) / 10
+                  : 0
+              });
+            }
           }
         },
       });
@@ -215,27 +247,63 @@ const PlayerDetails = () => {
                   <p className="text-gray-700 leading-relaxed">{player.bio}</p>
                 </div>
 
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-3">
-                    Favorite Golf Shot
-                  </h2>
-                  <p className="text-gray-700 leading-relaxed">
-                    {player.favoriteShot}
-                  </p>
-                </div>
+                <div className="flex flex-col md:flex-row gap-6">
+                  <div className="flex-1">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900 mb-3">
+                        Favorite Golf Shot
+                      </h2>
+                      <p className="text-gray-700 leading-relaxed">
+                        {player.favoriteShot}
+                      </p>
+                    </div>
 
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-3">
-                    Biggest Hero
-                  </h2>
-                  <p className="text-gray-700 leading-relaxed">{player.hero}</p>
-                </div>
+                    <div className="mt-6">
+                      <h2 className="text-xl font-bold text-gray-900 mb-3">
+                        Biggest Hero
+                      </h2>
+                      <p className="text-gray-700 leading-relaxed">{player.hero}</p>
+                    </div>
 
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-3">
-                    Greatest Foe
-                  </h2>
-                  <p className="text-gray-700 leading-relaxed">{player.foe}</p>
+                    <div className="mt-6">
+                      <h2 className="text-xl font-bold text-gray-900 mb-3">
+                        Greatest Foe
+                      </h2>
+                      <p className="text-gray-700 leading-relaxed">{player.foe}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 bg-gray-50 p-6 rounded-lg">
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">
+                      Player Stats
+                    </h2>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center">
+                        <Calendar className="w-5 h-5 text-pwga-blue mr-3" />
+                        <div>
+                          <h3 className="font-semibold text-gray-800">Games Played</h3>
+                          <p className="text-2xl font-bold text-pwga-green">{stats.gamesPlayed}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center">
+                        <Award className="w-5 h-5 text-yellow-500 mr-3" />
+                        <div>
+                          <h3 className="font-semibold text-gray-800">Wins</h3>
+                          <p className="text-2xl font-bold text-pwga-green">{stats.wins}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center">
+                        <Calculator className="w-5 h-5 text-gray-500 mr-3" />
+                        <div>
+                          <h3 className="font-semibold text-gray-800">Average Score</h3>
+                          <p className="text-2xl font-bold text-pwga-green">{stats.averageScore}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
