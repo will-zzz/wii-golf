@@ -5,7 +5,7 @@ import Papa from "papaparse";
 
 const Players = () => {
   const [players, setPlayers] = useState([]);
-  const [loading, setLoading] = useState(true); // Add a loading state
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const container = {
@@ -24,15 +24,80 @@ const Players = () => {
   };
 
   useEffect(() => {
-    const fetchPlayers = async () => {
-      setLoading(true); // Set loading to true before fetching
-      const csvUrl =
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?output=csv";
-      const response = await fetch(csvUrl);
-      const csvText = await response.text();
+    const fetchPlayersAndScores = async () => {
+      setLoading(true);
 
-      // Parse CSV data
-      Papa.parse(csvText, {
+      // Fetch players data
+      const playersCsvUrl =
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?output=csv";
+      const playersResponse = await fetch(playersCsvUrl);
+      const playersCsvText = await playersResponse.text();
+
+      // Fetch scores data
+      const scoresCsvUrl =
+        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=1898345264&single=true&output=csv";
+      const scoresResponse = await fetch(scoresCsvUrl);
+      const scoresCsvText = await scoresResponse.text();
+
+      // Parse scores data
+      const playerPoints = {};
+      Papa.parse(scoresCsvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (result) => {
+          result.data.forEach((row) => {
+            const playersInRound = [
+              {
+                name: row["Player 1 Name"],
+                score: parseInt(row["Player 1 Score"]) || Infinity,
+              },
+              {
+                name: row["Player 2 Name"],
+                score: parseInt(row["Player 2 Score"]) || Infinity,
+              },
+              {
+                name: row["Player 3 Name"],
+                score: parseInt(row["Player 3 Score"]) || Infinity,
+              },
+              {
+                name: row["Player 4 Name"],
+                score: parseInt(row["Player 4 Score"]) || Infinity,
+              },
+            ].filter((player) => player.name); // Filter out empty player entries
+
+            // Sort players by score (ascending)
+            playersInRound.sort((a, b) => a.score - b.score);
+
+            // Find the lowest score in the round
+            const lowestScore = playersInRound[0].score;
+
+            // Assign points based on position
+            playersInRound.forEach((player, index) => {
+              const position = index + 1; // 1-based position
+              const points =
+                position === 1
+                  ? 10
+                  : position === 2
+                    ? 5
+                    : position === 3
+                      ? 3
+                      : 1; // Weighted scoring
+
+              // If the player is tied for the lowest score, assign them the same points as the first position
+              if (player.score === lowestScore) {
+                playerPoints[player.name] =
+                  (playerPoints[player.name] || 0) + 10;
+              } else {
+                playerPoints[player.name] =
+                  (playerPoints[player.name] || 0) + points;
+              }
+            });
+          });
+        },
+      });
+
+      // Parse players data
+      Papa.parse(playersCsvText, {
         header: true,
         skipEmptyLines: true,
         complete: (result) => {
@@ -44,9 +109,12 @@ const Players = () => {
                   ? row.Photo.split("id=")[1]
                   : null;
 
+              const playerName = row.Name;
+              const points = playerPoints[playerName] || 0; // Get the total points or default to 0
+
               return {
-                id: row.Name.replace(/\s+/g, ""), // Remove spaces from the player's name to use as the ID
-                name: row.Name,
+                id: playerName.replace(/\s+/g, ""), // Remove spaces from the player's name to use as the ID
+                name: playerName,
                 image: photoId
                   ? `https://drive.google.com/thumbnail?id=${photoId}&sz=w1000` // Convert to direct image link
                   : "/images/bg.png", // Use a placeholder if no valid photo
@@ -54,8 +122,33 @@ const Players = () => {
                 favoriteShot: row["Favorite Golf Shot"],
                 hero: row["Biggest Hero"],
                 foe: row["Greatest Foe"],
+                points, // Store points for sorting
               };
             });
+
+          // Sort players by points (descending)
+          formattedPlayers.sort((a, b) => b.points - a.points);
+
+          console.log(formattedPlayers);
+
+          // Assign rank based on position in the sorted list, handling ties
+          let currentRank = 1;
+          formattedPlayers.forEach((player, index) => {
+            if (
+              index > 0 &&
+              formattedPlayers[index].points ===
+                formattedPlayers[index - 1].points
+            ) {
+              // If tied with the previous player, assign the same rank
+              player.rank = formattedPlayers[index - 1].rank;
+              currentRank++;
+            } else {
+              // Otherwise, assign the current rank
+              player.rank =
+                player.points > 0 ? `Rank #${currentRank}` : "Unranked";
+              currentRank++; // Increment rank for the next player
+            }
+          });
 
           setPlayers(formattedPlayers);
           setLoading(false); // Set loading to false after fetching
@@ -63,7 +156,7 @@ const Players = () => {
       });
     };
 
-    fetchPlayers();
+    fetchPlayersAndScores();
   }, []); // Empty dependency array ensures this runs only once on mount
 
   const handlePlayerClick = (playerId) => {
@@ -121,8 +214,18 @@ const Players = () => {
                   <h2 className="text-xl font-bold text-gray-900">
                     {player.name}
                   </h2>
-                  <span className="px-3 py-1 bg-pwga-green/10 text-pwga-green rounded-full text-sm font-medium">
-                    Rank #
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      player.rank === "Rank #1"
+                        ? "bg-yellow-200 text-yellow-600"
+                        : player.rank === "Rank #2"
+                          ? "bg-gray-200 text-gray-700"
+                          : player.rank === "Rank #3"
+                            ? "bg-yellow-600 text-yellow-900"
+                            : "bg-pwga-green/10 text-pwga-green"
+                    }`}
+                  >
+                    {player.rank}
                   </span>
                 </div>
               </div>
