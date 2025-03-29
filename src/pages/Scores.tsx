@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -19,71 +20,41 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import Papa from "papaparse";
+import { fetchScoresData, processScoreEntry, getAllPlayersFromScores, ScoreEntry } from "@/utils/fetchUtils";
 
 const Scores: React.FC = () => {
   // States for scores and filters
-  const [scores, setScores] = useState([]);
-  const [filteredScores, setFilteredScores] = useState([]);
+  const [scores, setScores] = useState<ScoreEntry[]>([]);
+  const [filteredScores, setFilteredScores] = useState<ScoreEntry[]>([]);
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [playerFilter, setPlayerFilter] = useState<string>("all_players");
   const [winnerSearch, setWinnerSearch] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [allPlayers, setAllPlayers] = useState<string[]>([]);
 
   // Fetch scores from Google Sheets
   useEffect(() => {
     const fetchScores = async () => {
       setLoading(true);
-      const csvUrl =
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=1898345264&single=true&output=csv";
-      const response = await fetch(csvUrl);
-      const csvText = await response.text();
-
-      Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (result) => {
-          const parsedScores = result.data.map((row, index) => {
-            // Extract the file ID from the Google Drive link
-            const photoId =
-              row.Photo && row.Photo.includes("id=")
-                ? row.Photo.split("id=")[1]
-                : null;
-
-            return {
-              id: index,
-              image: photoId
-                ? `https://drive.google.com/thumbnail?id=${photoId}&sz=w1000` // Convert to direct image link
-                : "/images/bg.png", // Use a placeholder if no valid photo
-              date: row.Timestamp
-                ? new Date(row.Timestamp).toLocaleDateString()
-                : "Unknown Date",
-              players: [
-                {
-                  name: row["Player 1 Name"],
-                  score: parseInt(row["Player 1 Score"]) || 0,
-                },
-                {
-                  name: row["Player 2 Name"],
-                  score: parseInt(row["Player 2 Score"]) || 0,
-                },
-                {
-                  name: row["Player 3 Name"],
-                  score: parseInt(row["Player 3 Score"]) || 0,
-                },
-                {
-                  name: row["Player 4 Name"],
-                  score: parseInt(row["Player 4 Score"]) || 0,
-                },
-              ].filter((player) => player.name), // Filter out empty player entries
-            };
-          });
-
-          setScores(parsedScores);
-          setFilteredScores(parsedScores);
-          setLoading(false);
-        },
-      });
+      try {
+        const rawScoresData = await fetchScoresData();
+        
+        // Process each score entry
+        const processedScores = rawScoresData
+          .map((row, index) => processScoreEntry(row, index))
+          .filter((score): score is ScoreEntry => score !== null); // Filter out null entries
+        
+        setScores(processedScores);
+        setFilteredScores(processedScores);
+        
+        // Get all players from the scores
+        const playerNames = getAllPlayersFromScores(processedScores);
+        setAllPlayers(playerNames);
+      } catch (error) {
+        console.error("Error fetching scores:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchScores();
@@ -116,18 +87,8 @@ const Scores: React.FC = () => {
 
         // Filter by winner name if winnerSearch is set
         if (winnerSearch) {
-          // Find the lowest score
-          const lowestScore = Math.min(
-            ...score.players.map((player) => player.score)
-          );
-
-          // Get winners (anyone with the lowest score)
-          const winners = score.players.filter(
-            (player) => player.score === lowestScore
-          );
-
           // Check if any winner's name includes the search term
-          return winners.some((winner) =>
+          return score.winners.some((winner) =>
             winner.name.toLowerCase().includes(winnerSearch.toLowerCase())
           );
         }
@@ -146,17 +107,6 @@ const Scores: React.FC = () => {
     setDateFilter(undefined);
     setPlayerFilter("all_players");
     setWinnerSearch("");
-  };
-
-  // Get unique player names from scores
-  const getAllPlayers = () => {
-    const playerSet = new Set<string>();
-    scores.forEach((score) => {
-      score.players.forEach((player) => {
-        playerSet.add(player.name);
-      });
-    });
-    return Array.from(playerSet);
   };
 
   return (
@@ -221,7 +171,7 @@ const Scores: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all_players">All Players</SelectItem>
-                {getAllPlayers().map((player, index) => (
+                {allPlayers.map((player, index) => (
                   <SelectItem key={index} value={player}>
                     {player}
                   </SelectItem>
@@ -281,6 +231,7 @@ const Scores: React.FC = () => {
               imageUrl={score.image}
               date={score.date}
               players={score.players}
+              winners={score.winners}
             />
           ))}
         </div>

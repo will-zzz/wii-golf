@@ -1,204 +1,48 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronLeft, Award, Calendar, Calculator } from "lucide-react";
-import Papa from "papaparse";
+import { getPlayerById } from "@/utils/rankUtils";
+import { PlayerData } from "@/utils/fetchUtils";
 
 const PlayerDetails = () => {
-  const { id } = useParams();
-  const [players, setPlayers] = useState([]);
-  const [player, setPlayer] = useState(null);
-  const [rank, setRank] = useState("Unranked"); // State to store the player's rank
-  const [stats, setStats] = useState({
-    gamesPlayed: 0,
-    wins: 0,
-    averageScore: 0,
-  });
+  const { id } = useParams<{ id: string }>();
+  const [player, setPlayer] = useState<PlayerData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPlayersAndScores = async () => {
-      const playersCsvUrl =
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=509577262&single=true&output=csv";
-      const scoresCsvUrl =
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=1898345264&single=true&output=csv";
-
-      // Fetch players data
-      const playersResponse = await fetch(playersCsvUrl);
-      const playersCsvText = await playersResponse.text();
-
-      // Fetch scores data
-      const scoresResponse = await fetch(scoresCsvUrl);
-      const scoresCsvText = await scoresResponse.text();
-
-      // Parse scores data
-      const playerPoints = {};
-      const playerStats = {}; // Preserve playerStats for tracking gamesPlayed, wins, and totalScore
-
-      Papa.parse(scoresCsvText, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (result) => {
-          result.data.forEach((row) => {
-            const playersInRound = [
-              {
-                name: row["Player 1 Name"],
-                score: parseInt(row["Player 1 Score"]) || Infinity,
-              },
-              {
-                name: row["Player 2 Name"],
-                score: parseInt(row["Player 2 Score"]) || Infinity,
-              },
-              {
-                name: row["Player 3 Name"],
-                score: parseInt(row["Player 3 Score"]) || Infinity,
-              },
-              {
-                name: row["Player 4 Name"],
-                score: parseInt(row["Player 4 Score"]) || Infinity,
-              },
-            ].filter((player) => player.name && player.score !== Infinity); // Filter out players with no name or invalid scores
-
-            // Skip this match if there are fewer than 2 players with valid scores
-            if (playersInRound.length < 2) {
-              return;
-            }
-
-            // Sort players by score (ascending)
-            playersInRound.sort((a, b) => a.score - b.score);
-
-            // Find the lowest score in the round
-            const lowestScore = playersInRound[0].score;
-
-            // Assign points and track stats
-            playersInRound.forEach((player, index) => {
-              const position = index + 1; // 1-based position
-              const points =
-                position === 1
-                  ? 10
-                  : position === 2
-                    ? 5
-                    : position === 3
-                      ? 3
-                      : 1; // Weighted scoring
-
-              // Initialize playerStats if not already present
-              if (!playerStats[player.name]) {
-                playerStats[player.name] = {
-                  gamesPlayed: 0,
-                  wins: 0,
-                  totalScore: 0,
-                };
-              }
-
-              // Update playerStats
-              playerStats[player.name].gamesPlayed += 1;
-              playerStats[player.name].totalScore += player.score;
-
-              // Check if this player is a winner (has the lowest score)
-              if (player.score === lowestScore) {
-                playerStats[player.name].wins += 1;
-                playerPoints[player.name] =
-                  (playerPoints[player.name] || 0) + 10;
-              } else {
-                playerPoints[player.name] =
-                  (playerPoints[player.name] || 0) + points;
-              }
-            });
-          });
-        },
-      });
-
-      // Parse players data
-      Papa.parse(playersCsvText, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (result) => {
-          const formattedPlayers = result.data
-            .filter((row) => row["Approved"] === "yes") // Only include approved players
-            .map((row) => {
-              const photoId =
-                row.Photo && row.Photo.includes("id=")
-                  ? row.Photo.split("id=")[1]
-                  : null;
-
-              const playerName = row.Name;
-              const points = playerPoints[playerName] || 0; // Get the total points or default to 0
-
-              return {
-                id: playerName.replace(/\s+/g, ""), // Remove spaces from the player's name to use as the ID
-                name: playerName,
-                image: photoId
-                  ? `https://drive.google.com/thumbnail?id=${photoId}&sz=w1000` // Convert to direct image link
-                  : "/images/bg.png", // Use a placeholder if no valid photo
-                bio: row.Bio,
-                favoriteShot: row["Favorite Golf Shot"],
-                hero: row["Biggest Hero"],
-                foe: row["Greatest Foe"],
-                points, // Store points for sorting
-              };
-            });
-
-          // Sort players by points (descending)
-          formattedPlayers.sort((a, b) => b.points - a.points);
-
-          // Assign rank based on position in the sorted list, handling ties
-          let currentRank = 1;
-          formattedPlayers.forEach((player, index) => {
-            if (
-              index > 0 &&
-              formattedPlayers[index].points ===
-                formattedPlayers[index - 1].points
-            ) {
-              // If tied with the previous player, assign the same rank
-              player.rank = formattedPlayers[index - 1].rank;
-            } else {
-              // Otherwise, assign the current rank
-              player.rank =
-                player.points > 0 ? `Rank #${currentRank}` : "Unranked";
-              currentRank++; // Increment rank for the next player
-            }
-          });
-
-          setPlayers(formattedPlayers);
-
-          // Find the player after the players state is updated
-          const foundPlayer = formattedPlayers.find((p) => p.id === id);
-          setPlayer(foundPlayer);
-
-          // Set the player's rank and stats
-          if (foundPlayer) {
-            setRank(foundPlayer.rank);
-
-            // Set the player's stats
-            const playerName = foundPlayer.name;
-            if (playerStats[playerName]) {
-              const playerStat = playerStats[playerName];
-              setStats({
-                gamesPlayed: playerStat.gamesPlayed,
-                wins: playerStat.wins,
-                averageScore:
-                  playerStat.gamesPlayed > 0
-                    ? Math.round(
-                        (playerStat.totalScore / playerStat.gamesPlayed) * 10
-                      ) / 10
-                    : 0,
-              });
-            }
-          }
-        },
-      });
+    const fetchPlayer = async () => {
+      setLoading(true);
+      try {
+        if (id) {
+          const playerData = await getPlayerById(id);
+          setPlayer(playerData);
+        }
+      } catch (error) {
+        console.error("Error fetching player:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetchPlayersAndScores();
+    fetchPlayer();
   }, [id]);
 
-  if (!player) {
+  if (loading || !player) {
     return (
       <div className="min-h-screen pt-16 flex items-center justify-center">
         <p className="text-xl text-gray-600">Loading player...</p>
       </div>
     );
   }
+
+  // Use stats from player object
+  const stats = player.stats || {
+    gamesPlayed: 0,
+    wins: 0,
+    averageScore: 0,
+  };
 
   return (
     <div className="min-h-screen pt-16 bg-gradient-to-b from-white to-gray-50">
@@ -220,7 +64,7 @@ const PlayerDetails = () => {
           <div className="md:flex">
             <div className="md:w-2/5 h-80 md:h-auto relative">
               <img
-                src={player.image}
+                src={player.image || ''}
                 alt={player.name}
                 className="w-full h-full object-cover object-center"
               />
@@ -246,7 +90,7 @@ const PlayerDetails = () => {
                             : "bg-pwga-green/10 text-pwga-green"
                     }`}
                   >
-                    {rank}
+                    {player.rank}
                   </span>
                 </div>
               </div>
