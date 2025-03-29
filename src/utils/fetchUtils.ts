@@ -1,9 +1,10 @@
-
 import Papa from "papaparse";
 
 // URLs for the Google Sheets data
-const PLAYERS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?output=csv";
-const SCORES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=1898345264&single=true&output=csv";
+const PLAYERS_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?output=csv";
+const SCORES_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=1898345264&single=true&output=csv";
 
 export type RawPlayerData = {
   Name: string;
@@ -65,7 +66,7 @@ export type PlayerData = {
 export const fetchPlayersData = async (): Promise<RawPlayerData[]> => {
   const response = await fetch(PLAYERS_CSV_URL);
   const csvText = await response.text();
-  
+
   return new Promise((resolve) => {
     Papa.parse(csvText, {
       header: true,
@@ -81,7 +82,7 @@ export const fetchPlayersData = async (): Promise<RawPlayerData[]> => {
 export const fetchScoresData = async (): Promise<RawScoreData[]> => {
   const response = await fetch(SCORES_CSV_URL);
   const csvText = await response.text();
-  
+
   return new Promise((resolve) => {
     Papa.parse(csvText, {
       header: true,
@@ -94,12 +95,35 @@ export const fetchScoresData = async (): Promise<RawScoreData[]> => {
 };
 
 // Convert a raw score entry into a processed score entry with player data
-export const processScoreEntry = (row: RawScoreData, index: number): ScoreEntry | null => {
+export const processScoreEntry = (
+  row: RawScoreData,
+  index: number
+): ScoreEntry | null => {
   const players = [
-    { name: row["Player 1 Name"], score: parseInt(row["Player 1 Score"]) || Infinity },
-    { name: row["Player 2 Name"], score: parseInt(row["Player 2 Score"]) || Infinity },
-    { name: row["Player 3 Name"], score: parseInt(row["Player 3 Score"]) || Infinity },
-    { name: row["Player 4 Name"], score: parseInt(row["Player 4 Score"]) || Infinity },
+    {
+      name: row["Player 1 Name"],
+      score: isNaN(parseInt(row["Player 1 Score"]))
+        ? Infinity
+        : parseInt(row["Player 1 Score"]),
+    },
+    {
+      name: row["Player 2 Name"],
+      score: isNaN(parseInt(row["Player 2 Score"]))
+        ? Infinity
+        : parseInt(row["Player 2 Score"]),
+    },
+    {
+      name: row["Player 3 Name"],
+      score: isNaN(parseInt(row["Player 3 Score"]))
+        ? Infinity
+        : parseInt(row["Player 3 Score"]),
+    },
+    {
+      name: row["Player 4 Name"],
+      score: isNaN(parseInt(row["Player 4 Score"]))
+        ? Infinity
+        : parseInt(row["Player 4 Score"]),
+    },
   ].filter((player) => player.name && player.score !== Infinity); // Filter out players with no name or invalid scores
 
   // Skip this match if there are fewer than 2 players with valid scores
@@ -108,15 +132,14 @@ export const processScoreEntry = (row: RawScoreData, index: number): ScoreEntry 
   }
 
   // Extract the file ID from the Google Drive link
-  const photoId = row.Photo && row.Photo.includes("id=")
-    ? row.Photo.split("id=")[1]
-    : null;
+  const photoId =
+    row.Photo && row.Photo.includes("id=") ? row.Photo.split("id=")[1] : null;
 
   // Find the lowest score
-  const lowestScore = Math.min(...players.map(player => player.score));
-  
+  const lowestScore = Math.min(...players.map((player) => player.score));
+
   // Get winners (anyone with the lowest score)
-  const winners = players.filter(player => player.score === lowestScore);
+  const winners = players.filter((player) => player.score === lowestScore);
 
   return {
     id: index,

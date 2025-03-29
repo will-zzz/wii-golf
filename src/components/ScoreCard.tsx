@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Trophy } from "lucide-react";
 import { PlayerScore } from "@/utils/fetchUtils";
@@ -10,7 +9,12 @@ interface ScoreCardProps {
   winners?: PlayerScore[];
 }
 
-const ScoreCard: React.FC<ScoreCardProps> = ({ imageUrl, date, players, winners = [] }) => {
+const ScoreCard: React.FC<ScoreCardProps> = ({
+  imageUrl,
+  date,
+  players,
+  winners = [],
+}) => {
   // Sort players by score (ascending)
   const sortedPlayers = [...players].sort((a, b) => a.score - b.score);
 
@@ -35,20 +39,20 @@ const ScoreCard: React.FC<ScoreCardProps> = ({ imageUrl, date, players, winners 
                 <div
                   key={index}
                   className={`flex items-center justify-between p-3 rounded-lg ${
-                    winners.some(winner => winner.name === player.name)
+                    winners.some((winner) => winner.name === player.name)
                       ? "bg-yellow-50 border border-yellow-200"
                       : "bg-gray-50"
                   }`}
                 >
                   <div className="flex items-center">
-                    {winners.some(winner => winner.name === player.name) && (
+                    {winners.some((winner) => winner.name === player.name) && (
                       <Trophy className="h-4 w-4 text-yellow-500 mr-2" />
                     )}
                     <span className="font-medium">{player.name}</span>
                   </div>
                   <span
                     className={`font-bold ${
-                      player.score < 0 ? "text-green-600" : "text-red-600"
+                      player.score <= 0 ? "text-green-600" : "text-red-600"
                     }`}
                   >
                     {player.score > 0 ? `+${player.score}` : player.score}
