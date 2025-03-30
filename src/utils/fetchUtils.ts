@@ -58,7 +58,7 @@ export type PlayerData = {
   hero: string;
   foe: string;
   points: number;
-  rank?: string;
+  rank: string;
   stats?: PlayerStats;
 };
 

@@ -206,6 +206,7 @@ export const processPlayers = (
           totalScore: 0,
           averageScore: 0,
         },
+        rank: "", // Add the rank property with an empty string as default
       };
     })
     .filter((player) => player.image); // Filter out players without an image
@@ -224,7 +225,6 @@ export const processPlayers = (
     ) {
       // If tied with the previous player, assign the same rank
       player.rank = formattedPlayers[index - 1].rank;
-      currentRank++;
     } else {
       // Otherwise, assign the current rank
       player.rank = player.points > 0 ? `Rank #${currentRank}` : "Unranked";
