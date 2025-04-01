@@ -141,14 +141,23 @@ export const processScoreEntry = (
   // Get winners (anyone with the lowest score)
   const winners = players.filter((player) => player.score === lowestScore);
 
+  // Properly format the date for consistent sorting
+  let formattedDate = "Unknown Date";
+  if (row.Timestamp) {
+    try {
+      // Parse the timestamp and format it consistently
+      formattedDate = new Date(row.Timestamp).toLocaleDateString();
+    } catch (e) {
+      console.error("Error parsing date:", e);
+    }
+  }
+
   return {
     id: index,
     image: photoId
       ? `https://drive.google.com/thumbnail?id=${photoId}&sz=w1000` // Convert to direct image link
       : "/images/bg.png", // Use a placeholder if no valid photo
-    date: row.Timestamp
-      ? new Date(row.Timestamp).toLocaleDateString()
-      : "Unknown Date",
+    date: formattedDate,
     players,
     winners,
   };

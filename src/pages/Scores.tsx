@@ -44,11 +44,18 @@ const Scores: React.FC = () => {
           .map((row, index) => processScoreEntry(row, index))
           .filter((score): score is ScoreEntry => score !== null); // Filter out null entries
         
-        setScores(processedScores);
-        setFilteredScores(processedScores);
+        // Sort scores by date, most recent first
+        const sortedScores = processedScores.sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          return dateB.getTime() - dateA.getTime();
+        });
+        
+        setScores(sortedScores);
+        setFilteredScores(sortedScores);
         
         // Get all players from the scores
-        const playerNames = getAllPlayersFromScores(processedScores);
+        const playerNames = getAllPlayersFromScores(sortedScores);
         setAllPlayers(playerNames);
       } catch (error) {
         console.error("Error fetching scores:", error);
