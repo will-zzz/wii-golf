@@ -1,7 +1,9 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
+import { Trophy } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -72,6 +74,7 @@ const Events = () => {
                       ? "Coming Soon"
                       : "Closed",
                 buyin: row["Buy-in"],
+                winner: row["Winner"] || "", // Added winner field
                 image:
                   row.Image && row.Image.includes("id=")
                     ? `https://drive.google.com/thumbnail?id=${
@@ -243,7 +246,7 @@ const Events = () => {
               <motion.div
                 key={event.id}
                 variants={item}
-                className="bg-white rounded-lg shadow-lg overflow-hidden"
+                className="bg-white rounded-lg shadow-lg overflow-hidden cursor-pointer"
                 onClick={() => setSelectedEvent(event)}
               >
                 <div className="h-48 overflow-hidden relative">
@@ -258,7 +261,17 @@ const Events = () => {
                     {event.title}
                   </h2>
                   <p className="text-gray-600 mb-2">{event.date}</p>
-                  <p className="text-gray-700">{event.location}</p>
+                  <p className="text-gray-700 mb-3">{event.location}</p>
+                  
+                  {/* Display winner if available */}
+                  {event.winner && (
+                    <div className="mt-2 flex items-center">
+                      <Trophy className="h-5 w-5 text-yellow-500 mr-2" />
+                      <span className="text-gray-800 font-medium">
+                        Winner: {event.winner}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -293,6 +306,17 @@ const Events = () => {
                 </div>
                 <p className="text-gray-600 mb-2">{selectedEvent.date}</p>
                 <p className="text-gray-700 mb-4">{selectedEvent.location}</p>
+
+                {/* Display winner in modal if available */}
+                {selectedEvent.status === "Closed" && selectedEvent.winner && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 flex items-center">
+                    <Trophy className="h-6 w-6 text-yellow-500 mr-3" />
+                    <div>
+                      <p className="text-sm text-yellow-700 font-medium">Champion</p>
+                      <p className="text-lg font-bold text-gray-900">{selectedEvent.winner}</p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mb-6">
                   <img
