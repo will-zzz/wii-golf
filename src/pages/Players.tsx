@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -48,7 +47,6 @@ const Players = () => {
     navigate(`/players/${playerId}`);
   };
 
-  // Filter players based on search query
   const filteredPlayers = players.filter(player => 
     player.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -79,7 +77,6 @@ const Players = () => {
           </p>
         </motion.div>
 
-        {/* Search Filter */}
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

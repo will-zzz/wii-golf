@@ -1,3 +1,4 @@
+
 import Papa from "papaparse";
 
 // URLs for the Google Sheets data
@@ -172,4 +173,10 @@ export const getAllPlayersFromScores = (scores: ScoreEntry[]): string[] => {
     });
   });
   return Array.from(playerSet);
+};
+
+// New function to normalize player names for consistent ID generation
+export const normalizePlayerName = (name: string): string => {
+  // Remove special characters and spaces, but preserve the core name
+  return name.replace(/[^\w\s]/g, '').replace(/\s+/g, '');
 };

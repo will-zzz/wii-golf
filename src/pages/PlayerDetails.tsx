@@ -4,7 +4,7 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronLeft, Award, Calendar, Calculator } from "lucide-react";
 import { getPlayerById } from "@/utils/rankUtils";
-import { PlayerData } from "@/utils/fetchUtils";
+import { PlayerData, normalizePlayerName } from "@/utils/fetchUtils";
 
 const PlayerDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,7 +16,9 @@ const PlayerDetails = () => {
       setLoading(true);
       try {
         if (id) {
-          const playerData = await getPlayerById(id);
+          // Normalize the ID from the URL to match our consistent ID format
+          const normalizedId = normalizePlayerName(id);
+          const playerData = await getPlayerById(normalizedId);
           setPlayer(playerData);
         }
       } catch (error) {

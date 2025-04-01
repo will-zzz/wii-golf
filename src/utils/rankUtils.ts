@@ -1,9 +1,11 @@
+
 import {
   RawScoreData,
   PlayerData,
   PlayerStats,
   fetchScoresData,
   fetchPlayersData,
+  normalizePlayerName,
 } from "./fetchUtils";
 
 // Calculate points for each player based on their scores
@@ -187,10 +189,12 @@ export const processPlayers = (
           : null;
 
       const playerName = row.Name;
+      // Use normalized player name for record lookup
       const points = playerPoints[playerName] || 0; // Get the total points or default to 0
 
       return {
-        id: playerName.replace(/\s+/g, ""), // Remove spaces from the player's name to use as the ID
+        // Use normalized player name for consistent ID generation
+        id: normalizePlayerName(playerName),
         name: playerName,
         image: photoId
           ? `https://drive.google.com/thumbnail?id=${photoId}&sz=w1000` // Convert to direct image link
@@ -277,5 +281,6 @@ export const getPlayerById = async (
   playerId: string
 ): Promise<PlayerData | null> => {
   const players = await fetchRankedPlayers();
-  return players.find((p) => p.id === playerId) || null;
+  // Use case-insensitive matching to be more forgiving with IDs
+  return players.find((p) => p.id.toLowerCase() === playerId.toLowerCase()) || null;
 };
