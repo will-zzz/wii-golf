@@ -73,7 +73,7 @@ const Events = () => {
                       ? "Coming Soon"
                       : "Closed",
                 buyin: row["Buy-in"],
-                winner: row["Winner"] || "", // Added winner field
+                winner: row["Winner"] || "",
                 image:
                   row.Image && row.Image.includes("id=")
                     ? `https://drive.google.com/thumbnail?id=${
@@ -83,7 +83,7 @@ const Events = () => {
                 link: row["Registration Link"],
                 playersLink: row["Registered Players"],
                 players,
-                bants,
+                bants: shuffleArray(bants), // Shuffle the bants array
               };
             })
           );
@@ -126,6 +126,16 @@ const Events = () => {
         },
       });
     });
+  };
+
+  // Utility function to shuffle an array
+  const shuffleArray = (array) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
   };
 
   if (loading) {
