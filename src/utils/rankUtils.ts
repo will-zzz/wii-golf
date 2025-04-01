@@ -211,8 +211,16 @@ export const processPlayers = (
     })
     .filter((player) => player.image); // Filter out players without an image
 
-  // Sort players by points (descending)
-  formattedPlayers.sort((a, b) => b.points - a.points);
+  // Sort players by average score (ascending, since lower is better in golf)
+  // Only consider players who have played at least one game
+  formattedPlayers.sort((a, b) => {
+    // If a player hasn't played any games, they should rank lower
+    if (a.stats?.gamesPlayed === 0 && b.stats?.gamesPlayed > 0) return 1;
+    if (b.stats?.gamesPlayed === 0 && a.stats?.gamesPlayed > 0) return -1;
+    
+    // If both players have played games, sort by average score (lower is better)
+    return (a.stats?.averageScore || Infinity) - (b.stats?.averageScore || Infinity);
+  });
 
   console.log(formattedPlayers);
 
@@ -221,13 +229,15 @@ export const processPlayers = (
   formattedPlayers.forEach((player, index) => {
     if (
       index > 0 &&
-      formattedPlayers[index].points === formattedPlayers[index - 1].points
+      player.stats?.gamesPlayed > 0 &&
+      formattedPlayers[index - 1].stats?.gamesPlayed > 0 &&
+      player.stats?.averageScore === formattedPlayers[index - 1].stats?.averageScore
     ) {
-      // If tied with the previous player, assign the same rank
+      // If tied with the previous player on average score, assign the same rank
       player.rank = formattedPlayers[index - 1].rank;
     } else {
-      // Otherwise, assign the current rank
-      player.rank = player.points > 0 ? `Rank #${currentRank}` : "Unranked";
+      // Otherwise, assign the current rank, but only if they've played at least one game
+      player.rank = player.stats?.gamesPlayed > 0 ? `Rank #${currentRank}` : "Unranked";
       currentRank++; // Increment rank for the next player
     }
   });
