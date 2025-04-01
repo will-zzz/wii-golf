@@ -100,6 +100,28 @@ export const calculatePlayerStats = (
   scoresData: RawScoreData[]
 ): Record<string, PlayerStats> => {
   const playerStats: Record<string, PlayerStats> = {};
+  // Create mapping of normalized to original player names to handle quotation marks
+  const playerNamesMap: Record<string, string[]> = {};
+
+  // First, process all players from scoresData to build the mapping
+  scoresData.forEach((row) => {
+    const players = [
+      row["Player 1 Name"],
+      row["Player 2 Name"],
+      row["Player 3 Name"],
+      row["Player 4 Name"],
+    ].filter(name => name && name.trim() !== '');
+
+    players.forEach(name => {
+      const normalized = name.trim();
+      if (!playerNamesMap[normalized]) {
+        playerNamesMap[normalized] = [];
+      }
+      if (!playerNamesMap[normalized].includes(name)) {
+        playerNamesMap[normalized].push(name);
+      }
+    });
+  });
 
   scoresData.forEach((row) => {
     const playersInRound = [
@@ -142,8 +164,11 @@ export const calculatePlayerStats = (
 
     // Update stats for each player
     playersInRound.forEach((player) => {
-      if (!playerStats[player.name]) {
-        playerStats[player.name] = {
+      const playerName = player.name.trim();
+      
+      // Initialize player stats if not yet created
+      if (!playerStats[playerName]) {
+        playerStats[playerName] = {
           gamesPlayed: 0,
           wins: 0,
           totalScore: 0,
@@ -152,12 +177,12 @@ export const calculatePlayerStats = (
       }
 
       // Update player stats
-      playerStats[player.name].gamesPlayed += 1;
-      playerStats[player.name].totalScore += player.score;
+      playerStats[playerName].gamesPlayed += 1;
+      playerStats[playerName].totalScore += player.score;
 
       // Check if this player is a winner (has the lowest score)
       if (player.score === lowestScore) {
-        playerStats[player.name].wins += 1;
+        playerStats[playerName].wins += 1;
       }
     });
   });
@@ -189,8 +214,18 @@ export const processPlayers = (
           : null;
 
       const playerName = row.Name;
-      // Use normalized player name for record lookup
-      const points = playerPoints[playerName] || 0; // Get the total points or default to 0
+      const exactPlayerName = playerName.trim();
+      
+      // Use the exact player name to get stats
+      const playerStat = playerStats[exactPlayerName] || {
+        gamesPlayed: 0,
+        wins: 0,
+        totalScore: 0,
+        averageScore: 0,
+      };
+      
+      // Also get points by exact name
+      const points = playerPoints[exactPlayerName] || 0;
 
       return {
         // Use normalized player name for consistent ID generation
@@ -204,16 +239,19 @@ export const processPlayers = (
         hero: row["Biggest Hero"],
         foe: row["Greatest Foe"],
         points, // Store points for sorting
-        stats: playerStats[playerName] || {
-          gamesPlayed: 0,
-          wins: 0,
-          totalScore: 0,
-          averageScore: 0,
-        },
+        stats: playerStat,
         rank: "", // Add the rank property with an empty string as default
       };
     })
     .filter((player) => player.image); // Filter out players without an image
+
+  // Debug - help identify players and their stats 
+  console.log("Player stats before sorting:", playerStats);
+  console.log("Formatted players before sorting:", formattedPlayers.map(p => ({ 
+    name: p.name, 
+    games: p.stats?.gamesPlayed, 
+    avg: p.stats?.averageScore 
+  })));
 
   // Sort players by average score (ascending, since lower is better in golf)
   // Only consider players who have played at least one game
@@ -225,8 +263,6 @@ export const processPlayers = (
     // If both players have played games, sort by average score (lower is better)
     return (a.stats?.averageScore || Infinity) - (b.stats?.averageScore || Infinity);
   });
-
-  console.log(formattedPlayers);
 
   // Assign rank based on position in the sorted list, handling ties
   let currentRank = 1;
