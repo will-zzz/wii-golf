@@ -14,8 +14,8 @@ const About = () => {
           <h1 className="text-4xl font-bold text-gray-900 mb-4">About PWGA</h1>
           <div className="w-24 h-1 bg-pwga-green mx-auto mb-6"></div>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            The PWGA is the Professional Wii Golfers' Association. Or should I
-            say WE are the Professional Wii Golfers' Association.
+            We are the PWGA, the Professional Wii Golfers' Association. Or
+            should I say WII are the Professional Wii Golfers' Association.
           </p>
         </motion.div>
 
