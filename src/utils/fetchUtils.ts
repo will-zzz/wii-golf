@@ -1,34 +1,5 @@
 
-import Papa from "papaparse";
-
-// URLs for the Google Sheets data
-const PLAYERS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?output=csv";
-const SCORES_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=1898345264&single=true&output=csv";
-
-export type RawPlayerData = {
-  Name: string;
-  Photo: string;
-  Bio: string;
-  "Favorite Golf Shot": string;
-  "Biggest Hero": string;
-  "Greatest Foe": string;
-  Approved: string;
-};
-
-export type RawScoreData = {
-  Timestamp: string;
-  Photo: string;
-  "Player 1 Name": string;
-  "Player 1 Score": string;
-  "Player 2 Name": string;
-  "Player 2 Score": string;
-  "Player 3 Name": string;
-  "Player 3 Score": string;
-  "Player 4 Name": string;
-  "Player 4 Score": string;
-};
+import { supabase } from "@/lib/supabaseClient";
 
 export type PlayerScore = {
   name: string;
@@ -63,105 +34,154 @@ export type PlayerData = {
   stats?: PlayerStats;
 };
 
-// Function to fetch player data from the Google Sheet
-export const fetchPlayersData = async (): Promise<RawPlayerData[]> => {
-  const response = await fetch(PLAYERS_CSV_URL);
-  const csvText = await response.text();
-
-  return new Promise((resolve) => {
-    Papa.parse(csvText, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (result) => {
-        resolve(result.data as RawPlayerData[]);
-      },
-    });
-  });
+export type EventData = {
+  id: number;
+  title: string;
+  date: string;
+  location: string;
+  description: string;
+  status: string;
+  buyin: string;
+  winner: string;
+  image: string;
+  link: string;
+  playersLink: string;
+  players: string[];
+  bants: string[];
 };
 
-// Function to fetch scores data from the Google Sheet
-export const fetchScoresData = async (): Promise<RawScoreData[]> => {
-  const response = await fetch(SCORES_CSV_URL);
-  const csvText = await response.text();
+type SupabasePlayerRelation = { full_name?: string } | { full_name?: string }[] | null;
 
-  return new Promise((resolve) => {
-    Papa.parse(csvText, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (result) => {
-        resolve(result.data as RawScoreData[]);
-      },
-    });
-  });
+type SupabaseRoundScoreRow = {
+  player_slot: number | null;
+  score: number | null;
+  players: SupabasePlayerRelation;
 };
 
-// Convert a raw score entry into a processed score entry with player data
-export const processScoreEntry = (
-  row: RawScoreData,
-  index: number
-): ScoreEntry | null => {
-  const players = [
-    {
-      name: row["Player 1 Name"],
-      score: isNaN(parseInt(row["Player 1 Score"]))
-        ? Infinity
-        : parseInt(row["Player 1 Score"]),
-    },
-    {
-      name: row["Player 2 Name"],
-      score: isNaN(parseInt(row["Player 2 Score"]))
-        ? Infinity
-        : parseInt(row["Player 2 Score"]),
-    },
-    {
-      name: row["Player 3 Name"],
-      score: isNaN(parseInt(row["Player 3 Score"]))
-        ? Infinity
-        : parseInt(row["Player 3 Score"]),
-    },
-    {
-      name: row["Player 4 Name"],
-      score: isNaN(parseInt(row["Player 4 Score"]))
-        ? Infinity
-        : parseInt(row["Player 4 Score"]),
-    },
-  ].filter((player) => player.name && player.score !== Infinity); // Filter out players with no name or invalid scores
+type SupabaseScoreRoundRow = {
+  id: number;
+  source_timestamp: string | null;
+  photo_url: string | null;
+  round_scores: SupabaseRoundScoreRow[] | null;
+};
 
-  // Skip this match if there are fewer than 2 players with valid scores
-  if (players.length < 2) {
-    return null;
+type SupabaseEventRow = {
+  id: number;
+  title: string | null;
+  event_date_text: string | null;
+  location: string | null;
+  description: string | null;
+  registration_open: boolean | null;
+  buy_in: number | string | null;
+  winner_name: string | null;
+  image_url: string | null;
+  registration_link: string | null;
+  registered_players_url: string | null;
+};
+
+const toGoogleThumbnailUrl = (url?: string | null): string | null => {
+  if (!url) return null;
+  if (url.includes("thumbnail?id=") || url.startsWith("http") === false) {
+    return url;
+  }
+  const idMatch = url.match(/[?&]id=([^&]+)/);
+  if (idMatch?.[1]) {
+    return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1000`;
+  }
+  return url;
+};
+
+const getPlayerNameFromRelation = (players: SupabasePlayerRelation): string => {
+  if (!players) return "";
+  if (Array.isArray(players)) {
+    return players[0]?.full_name ?? "";
+  }
+  return players.full_name ?? "";
+};
+
+export const fetchScoresData = async (): Promise<ScoreEntry[]> => {
+  const { data, error } = await supabase
+    .from("score_rounds")
+    .select(
+      `
+      id,
+      source_timestamp,
+      photo_url,
+      round_scores (
+        player_slot,
+        score,
+        players (
+          full_name
+        )
+      )
+    `
+    )
+    .order("source_timestamp", { ascending: false, nullsFirst: false })
+    .order("id", { ascending: false });
+
+  if (error) {
+    throw error;
   }
 
-  // Extract the file ID from the Google Drive link
-  const photoId =
-    row.Photo && row.Photo.includes("id=") ? row.Photo.split("id=")[1] : null;
+  const rounds = (data ?? []) as SupabaseScoreRoundRow[];
+  return rounds
+    .map((round) => {
+      const players = (round.round_scores ?? [])
+        .map((entry) => ({
+          name: getPlayerNameFromRelation(entry.players),
+          score: Number(entry.score),
+          slot: Number(entry.player_slot ?? 99),
+        }))
+        .filter((entry) => entry.name && Number.isFinite(entry.score))
+        .sort((a, b) => a.slot - b.slot)
+        .map(({ name, score }) => ({ name, score })) as PlayerScore[];
 
-  // Find the lowest score
-  const lowestScore = Math.min(...players.map((player) => player.score));
+      if (players.length < 2) {
+        return null;
+      }
 
-  // Get winners (anyone with the lowest score)
-  const winners = players.filter((player) => player.score === lowestScore);
+      const lowestScore = Math.min(...players.map((player) => player.score));
+      const winners = players.filter((player) => player.score === lowestScore);
 
-  // Properly format the date for consistent sorting
-  let formattedDate = "Unknown Date";
-  if (row.Timestamp) {
-    try {
-      // Parse the timestamp and format it consistently
-      formattedDate = new Date(row.Timestamp).toLocaleDateString();
-    } catch (e) {
-      console.error("Error parsing date:", e);
-    }
+      return {
+        id: Number(round.id),
+        image: toGoogleThumbnailUrl(round.photo_url) || "/images/bg.png",
+        date: round.source_timestamp
+          ? new Date(round.source_timestamp).toLocaleDateString()
+          : "Unknown Date",
+        players,
+        winners,
+      } as ScoreEntry;
+    })
+    .filter((entry): entry is ScoreEntry => entry !== null);
+};
+
+export const fetchEventsData = async (): Promise<EventData[]> => {
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .order("id", { ascending: false });
+
+  if (error) {
+    throw error;
   }
 
-  return {
-    id: index,
-    image: photoId
-      ? `https://drive.google.com/thumbnail?id=${photoId}&sz=w1000` // Convert to direct image link
-      : "/images/bg.png", // Use a placeholder if no valid photo
-    date: formattedDate,
-    players,
-    winners,
-  };
+  const rows = (data ?? []) as SupabaseEventRow[];
+  return rows.map((row) => ({
+    id: Number(row.id),
+    title: row.title ?? "Untitled Event",
+    date: row.event_date_text ?? "",
+    location: row.location ?? "",
+    description: row.description ?? "",
+    status: row.registration_open ? "Registration Open" : "Closed",
+    buyin: String(row.buy_in ?? 0),
+    winner: row.winner_name ?? "",
+    image: toGoogleThumbnailUrl(row.image_url) || "/images/bg.png",
+    link: row.registration_link ?? "",
+    playersLink: row.registered_players_url ?? "",
+    players: [],
+    bants: [],
+  }));
 };
 
 // Get all unique player names from scores

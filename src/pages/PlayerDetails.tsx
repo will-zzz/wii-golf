@@ -4,7 +4,7 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronLeft, Award, Calendar, Calculator } from "lucide-react";
 import { getPlayerById } from "@/utils/rankUtils";
-import { PlayerData, normalizePlayerName } from "@/utils/fetchUtils";
+import { PlayerData } from "@/utils/fetchUtils";
 
 const PlayerDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,9 +16,7 @@ const PlayerDetails = () => {
       setLoading(true);
       try {
         if (id) {
-          // Normalize the ID from the URL to match our consistent ID format
-          const normalizedId = normalizePlayerName(id);
-          const playerData = await getPlayerById(normalizedId);
+          const playerData = await getPlayerById(id);
           setPlayer(playerData);
         }
       } catch (error) {
@@ -31,10 +29,23 @@ const PlayerDetails = () => {
     fetchPlayer();
   }, [id]);
 
-  if (loading || !player) {
+  if (loading) {
     return (
       <div className="min-h-screen pt-16 flex items-center justify-center">
         <p className="text-xl text-gray-600">Loading player...</p>
+      </div>
+    );
+  }
+
+  if (!player) {
+    return (
+      <div className="min-h-screen pt-16 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl text-gray-600 mb-4">Player not found.</p>
+          <Link to="/players" className="text-pwga-blue hover:underline">
+            Back to all players
+          </Link>
+        </div>
       </div>
     );
   }

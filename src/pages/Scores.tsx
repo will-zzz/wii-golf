@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { fetchScoresData, processScoreEntry, getAllPlayersFromScores, ScoreEntry } from "@/utils/fetchUtils";
+import { fetchScoresData, getAllPlayersFromScores, ScoreEntry } from "@/utils/fetchUtils";
 
 const Scores: React.FC = () => {
   // States for scores and filters
@@ -32,18 +32,13 @@ const Scores: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [allPlayers, setAllPlayers] = useState<string[]>([]);
 
-  // Fetch scores from Google Sheets
+  // Fetch scores from Supabase
   useEffect(() => {
     const fetchScores = async () => {
       setLoading(true);
       try {
-        const rawScoresData = await fetchScoresData();
-        
-        // Process each score entry
-        const processedScores = rawScoresData
-          .map((row, index) => processScoreEntry(row, index))
-          .filter((score): score is ScoreEntry => score !== null); // Filter out null entries
-        
+        const processedScores = await fetchScoresData();
+
         // Sort scores by date, most recent first
         const sortedScores = processedScores.sort((a, b) => {
           const dateA = new Date(a.date);

@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
 import { Trophy } from "lucide-react";
+import { fetchEventsData } from "@/utils/fetchUtils";
 import {
   Table,
   TableBody,
@@ -39,60 +40,35 @@ const Events = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
-      const csvUrl =
-        "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCxlwW9y1gVgNBYMaVb2WqqGFgrWPPUNvc6SDBp2E2ND1eBzlc5G9rN4h_idIY2xTJdgM8DfJNfz5P/pub?gid=1131600429&single=true&output=csv";
-      const response = await fetch(csvUrl);
-      const csvText = await response.text();
+      try {
+        const baseEvents = await fetchEventsData();
+        const events = await Promise.all(
+          baseEvents.map(async (event) => {
+            const playersAndBants = event.playersLink
+              ? await fetchPlayersAndBants(event.playersLink)
+              : [];
+            const players = playersAndBants
+              .filter((entry) => entry.name)
+              .map((entry: { name: string; bants: string }) => entry.name);
+            const bants = playersAndBants
+              .filter((entry) => entry.bants)
+              .map((entry) => entry.bants);
 
-      Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (result) => {
-          const events = await Promise.all(
-            result.data.map(async (row, index) => {
-              const playersAndBants = row["Registered Players"]
-                ? await fetchPlayersAndBants(row["Registered Players"])
-                : [];
-              const players = playersAndBants
-                .filter((entry) => entry.name)
-                .map((entry: { name: string; bants: string }) => entry.name);
-              const bants = playersAndBants
-                .filter((entry) => entry.bants)
-                .map((entry) => entry.bants);
+            return {
+              ...event,
+              players,
+              bants: shuffleArray(bants),
+            };
+          })
+        );
 
-              return {
-                id: index,
-                title: row.Title,
-                date: row.Date,
-                location: row.Location,
-                description: row.Description,
-                status:
-                  row["Registration open?"] === "yes"
-                    ? "Registration Open"
-                    : row["Registration open?"] === "coming soon"
-                      ? "Coming Soon"
-                      : "Closed",
-                buyin: row["Buy-in"],
-                winner: row["Winner"] || "",
-                image:
-                  row.Image && row.Image.includes("id=")
-                    ? `https://drive.google.com/thumbnail?id=${
-                        row.Image.split("id=")[1]
-                      }&sz=w1000`
-                    : "/images/bg.png",
-                link: row["Registration Link"],
-                playersLink: row["Registered Players"],
-                players,
-                bants: shuffleArray(bants), // Shuffle the bants array
-              };
-            })
-          );
-
-          setUpcomingEvents(events.filter((e) => e.status !== "Closed"));
-          setPastEvents(events.filter((e) => e.status === "Closed"));
-          setLoading(false);
-        },
-      });
+        setUpcomingEvents(events.filter((e) => e.status !== "Closed"));
+        setPastEvents(events.filter((e) => e.status === "Closed"));
+      } catch (error) {
+        console.error("Error loading events:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchEvents();
