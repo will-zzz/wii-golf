@@ -81,7 +81,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ open, onOpenChange }) => {
     toast({
       title: "Check your email",
       description:
-        "We sent a confirmation link. Confirm first, then log in.",
+        "We sent a confirmation link. Confirm, log in, then complete your player profile.",
     });
     setTab("login");
   };

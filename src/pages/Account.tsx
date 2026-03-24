@@ -3,98 +3,130 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
+import PlayerHeadshotUploader from "@/components/PlayerHeadshotUploader";
+import { uploadPlayerHeadshot } from "@/utils/imageUtils";
 
-type Claim = {
-  id: number;
-  status: "pending" | "approved" | "rejected" | "revoked";
-  created_at: string;
-  players: { full_name: string } | null;
-};
-
-type PlayerOption = {
+type EditablePlayerProfile = {
   id: string;
   full_name: string;
+  photo_url: string | null;
+  bio: string | null;
+  favorite_golf_shot: string | null;
+  biggest_hero: string | null;
+  greatest_foe: string | null;
+  approved: boolean;
 };
 
 const Account: React.FC = () => {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, refreshProfile, isAdmin } = useAuth();
   const { toast } = useToast();
-  const [displayName, setDisplayName] = useState(profile?.display_name ?? "");
-  const [saving, setSaving] = useState(false);
-  const [claims, setClaims] = useState<Claim[]>([]);
-  const [claimablePlayers, setClaimablePlayers] = useState<PlayerOption[]>([]);
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
-  const [claiming, setClaiming] = useState(false);
+  const [playerProfile, setPlayerProfile] = useState<EditablePlayerProfile | null>(null);
+  const [loadingPlayerProfile, setLoadingPlayerProfile] = useState(false);
+  const [savingPlayerProfile, setSavingPlayerProfile] = useState(false);
+  const [playerName, setPlayerName] = useState("");
+  const [storedPhotoUrl, setStoredPhotoUrl] = useState("");
+  const [croppedPhotoBlob, setCroppedPhotoBlob] = useState<Blob | null>(null);
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [bio, setBio] = useState("");
+  const [favoriteShot, setFavoriteShot] = useState("");
+  const [hero, setHero] = useState("");
+  const [foe, setFoe] = useState("");
 
   useEffect(() => {
-    setDisplayName(profile?.display_name ?? "");
-  }, [profile?.display_name]);
+    const loadPlayerProfile = async () => {
+      if (!user) return;
+      setLoadingPlayerProfile(true);
+      const { data, error } = await supabase
+        .from("players")
+        .select(
+          "id, full_name, photo_url, bio, favorite_golf_shot, biggest_hero, greatest_foe, approved"
+        )
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-  const loadAccountData = async () => {
-    const [{ data: claimsData, error: claimsError }, { data: playersData, error: playersError }] =
-      await Promise.all([
-        supabase
-          .from("player_claims")
-          .select("id, status, created_at, players(full_name)")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("players")
-          .select("id, full_name")
-          .eq("approved", true)
-          .order("full_name", { ascending: true }),
-      ]);
+      setLoadingPlayerProfile(false);
 
-    if (claimsError) {
-      toast({
-        title: "Failed loading claims",
-        description: claimsError.message,
-        variant: "destructive",
-      });
-    } else {
-      setClaims((claimsData ?? []) as unknown as Claim[]);
-    }
+      if (error) {
+        toast({
+          title: "Failed to load player profile",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (playersError) {
-      toast({
-        title: "Failed loading players",
-        description: playersError.message,
-        variant: "destructive",
-      });
-    } else {
-      setClaimablePlayers((playersData ?? []) as PlayerOption[]);
-    }
-  };
+      if (!data) {
+        setPlayerProfile(null);
+        return;
+      }
 
-  useEffect(() => {
-    if (!user) return;
-    loadAccountData();
+      const profileData = data as EditablePlayerProfile;
+      setPlayerProfile(profileData);
+      setPlayerName(profileData.full_name ?? "");
+      setStoredPhotoUrl(profileData.photo_url ?? "");
+      setPhotoUrl(profileData.photo_url ?? "");
+      setBio(profileData.bio ?? "");
+      setFavoriteShot(profileData.favorite_golf_shot ?? "");
+      setHero(profileData.biggest_hero ?? "");
+      setFoe(profileData.greatest_foe ?? "");
+    };
+
+    void loadPlayerProfile();
   }, [user]);
 
-  const handleSaveProfile = async () => {
-    if (!user) return;
-    setSaving(true);
-    const { error } = await supabase
-      .from("user_profiles")
-      .update({
-        display_name: displayName.trim() || null,
-      })
-      .eq("user_id", user.id);
+  const handleSavePlayerProfile = async () => {
+    if (!user || !playerProfile) return;
+    setSavingPlayerProfile(true);
 
-    setSaving(false);
+    let uploadedPhotoUrl = photoUrl.trim();
+    try {
+      if (croppedPhotoBlob) {
+        uploadedPhotoUrl = await uploadPlayerHeadshot(supabase, user.id, croppedPhotoBlob);
+        setStoredPhotoUrl(uploadedPhotoUrl);
+        setPhotoUrl(uploadedPhotoUrl);
+      }
+    } catch (error) {
+      setSavingPlayerProfile(false);
+      toast({
+        title: "Failed to upload headshot",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("players")
+      .update({
+        full_name: playerName.trim(),
+        photo_url: uploadedPhotoUrl,
+        bio: bio.trim(),
+        favorite_golf_shot: favoriteShot.trim(),
+        biggest_hero: hero.trim(),
+        greatest_foe: foe.trim(),
+      })
+      .eq("id", playerProfile.id);
+
+    if (!error) {
+      const { error: profileSyncError } = await supabase
+        .from("user_profiles")
+        .update({ display_name: playerName.trim() || null })
+        .eq("user_id", user.id);
+
+      if (profileSyncError) {
+        console.error("Unable to sync display_name:", profileSyncError.message);
+      }
+    }
+
+    setSavingPlayerProfile(false);
 
     if (error) {
       toast({
-        title: "Failed to save profile",
+        title: "Failed to save player profile",
         description: error.message,
         variant: "destructive",
       });
@@ -102,36 +134,18 @@ const Account: React.FC = () => {
     }
 
     await refreshProfile();
-    toast({
-      title: "Profile updated",
-      description: "Your display name has been saved.",
+    setPlayerProfile({
+      ...playerProfile,
+      full_name: playerName.trim(),
+      photo_url: uploadedPhotoUrl,
+      bio: bio.trim(),
+      favorite_golf_shot: favoriteShot.trim(),
+      biggest_hero: hero.trim(),
+      greatest_foe: foe.trim(),
     });
-  };
-
-  const handleSubmitClaim = async () => {
-    if (!selectedPlayerId) return;
-    setClaiming(true);
-    const { error } = await supabase.from("player_claims").insert({
-      player_id: selectedPlayerId,
-      user_id: user?.id,
-      status: "pending",
-    });
-    setClaiming(false);
-
-    if (error) {
-      toast({
-        title: "Claim request failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSelectedPlayerId("");
-    await loadAccountData();
     toast({
-      title: "Claim request submitted",
-      description: "A league admin can now review your request.",
+      title: "Player profile updated",
+      description: "Your profile changes have been saved.",
     });
   };
 
@@ -158,56 +172,109 @@ const Account: React.FC = () => {
       <h1 className="text-3xl font-bold mb-6">My Account</h1>
 
       <div className="bg-white rounded-lg border p-5 mb-6">
-        <h2 className="text-lg font-semibold mb-3">Profile</h2>
-        <p className="text-sm text-gray-500 mb-2">{user.email}</p>
-        <Input
-          value={displayName}
-          onChange={(event) => setDisplayName(event.target.value)}
-          placeholder="Display name"
-        />
-        <Button className="mt-3" onClick={handleSaveProfile} disabled={saving}>
-          {saving ? "Saving..." : "Save profile"}
-        </Button>
-      </div>
+        <h2 className="text-lg font-semibold mb-2">Player Profile</h2>
+        {loadingPlayerProfile ? (
+          <p className="text-sm text-gray-500">Loading player profile...</p>
+        ) : !playerProfile ? (
+          <div className="text-sm text-gray-600">
+            <p className="mb-2">You have not submitted a player profile yet.</p>
+            <Link to="/complete-profile" className="text-pwga-blue hover:underline">
+              Complete your player profile
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="text-xs text-gray-500">
+              Slug: <span className="font-mono">{playerProfile.slug}</span> (stable; does not
+              change when you edit your name)
+            </div>
+            <div className="text-xs text-gray-500">
+              Approval status:{" "}
+              <span className="font-medium">
+                {playerProfile.approved ? "Approved" : "Pending admin approval"}
+              </span>
+            </div>
 
-      <div className="bg-white rounded-lg border p-5 mb-6">
-        <h2 className="text-lg font-semibold mb-3">Claim Your Player Profile</h2>
-        <p className="text-sm text-gray-600 mb-3">
-          Submit a claim request so scores including your player can be tied to your account.
-        </p>
-        <div className="flex gap-2">
-          <Select value={selectedPlayerId} onValueChange={setSelectedPlayerId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select your player" />
-            </SelectTrigger>
-            <SelectContent>
-              {claimablePlayers.map((player) => (
-                <SelectItem key={player.id} value={player.id}>
-                  {player.full_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button onClick={handleSubmitClaim} disabled={!selectedPlayerId || claiming}>
-            {claiming ? "Submitting..." : "Request claim"}
-          </Button>
-        </div>
+            <div>
+              <label className="text-sm font-medium">Player Name</label>
+              <Input
+                value={playerName}
+                onChange={(event) => setPlayerName(event.target.value)}
+                placeholder="Your public player name"
+              />
+            </div>
+
+            <PlayerHeadshotUploader
+              imageUrl={storedPhotoUrl}
+              onCroppedBlobChange={setCroppedPhotoBlob}
+              onError={(message) =>
+                toast({
+                  title: "Image upload error",
+                  description: message,
+                  variant: "destructive",
+                })
+              }
+            />
+
+            <div>
+              <label className="text-sm font-medium">Bio</label>
+              <Textarea
+                value={bio}
+                onChange={(event) => setBio(event.target.value)}
+                className="min-h-28"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Favorite Golf Shot</label>
+              <Input
+                value={favoriteShot}
+                onChange={(event) => setFavoriteShot(event.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Biggest Hero</label>
+              <Input value={hero} onChange={(event) => setHero(event.target.value)} />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Greatest Foe</label>
+              <Input value={foe} onChange={(event) => setFoe(event.target.value)} />
+            </div>
+
+            <Button
+              onClick={handleSavePlayerProfile}
+              disabled={savingPlayerProfile || !playerName.trim()}
+            >
+              {savingPlayerProfile ? "Saving..." : "Save player profile"}
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border p-5">
-        <h2 className="text-lg font-semibold mb-3">My Claim Requests</h2>
-        {claims.length === 0 ? (
-          <p className="text-gray-500 text-sm">No claim requests yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {claims.map((claim) => (
-              <div key={claim.id} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
-                <span>{claim.players?.full_name ?? "Unknown player"}</span>
-                <span className="text-sm font-medium capitalize">{claim.status}</span>
-              </div>
-            ))}
+        <h2 className="text-lg font-semibold mb-2">Player Identity Linking</h2>
+        <p className="text-sm text-gray-600">
+          Player identity links are managed by league admins to avoid confusion and abuse.
+          This account display name does not change the public player profile card on the
+          players page.
+        </p>
+        {isAdmin ? (
+          <div className="mt-3">
+            <Link to="/admin" className="text-pwga-blue hover:underline text-sm">
+              Open Admin - Advanced account linking
+            </Link>
           </div>
-        )}
+        ) : null}
+      </div>
+
+      <div className="bg-white rounded-lg border p-5 mt-6">
+        <h2 className="text-lg font-semibold mb-2">Why name changes look different</h2>
+        <p className="text-sm text-gray-600">
+          Scores are attributed by stable `player_id`, not by name text. You can change your
+          player name without losing score attribution. The slug stays stable for links.
+        </p>
       </div>
     </motion.div>
   );

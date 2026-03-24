@@ -89,9 +89,10 @@ Run `supabase/auth_accounts.sql` in the Supabase SQL Editor.
 
 This adds:
 - `user_profiles`
-- `player_claims` (claim workflow for linking account -> player)
+- account-linked `players.user_id` onboarding flow
 - `score_disputes` (users can report bad scores tied to their claimed player)
 - RLS policies that restrict users to their own account data and dispute rights
+- `player-headshots` storage bucket policies for secure image upload
 
 ### 2) Configure Supabase Auth
 
@@ -129,3 +130,12 @@ on conflict (user_id) do nothing;
 ```
 
 Then refresh the app. You will see an `Admin` link in the account menu.
+
+### 5) Signup flow (users = players)
+
+- User creates account with email/password.
+- After first login, app routes to `/complete-profile` to submit player form fields.
+- Headshot upload supports square crop + client-side resize/compression before upload.
+- This creates/updates a player row linked by `players.user_id`.
+- Admin approves pending signups in `/admin` -> `Signups`.
+- `/admin` -> `Advanced` is only for rare manual relinking to existing legacy players.

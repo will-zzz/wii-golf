@@ -8,10 +8,18 @@ type UserProfile = {
   display_name: string | null;
 };
 
+type LinkedPlayerProfile = {
+  id: string;
+  full_name: string;
+  approved: boolean;
+};
+
 type AuthContextType = {
   user: User | null;
   session: Session | null;
   profile: UserProfile | null;
+  linkedPlayer: LinkedPlayerProfile | null;
+  needsPlayerProfile: boolean;
   isAdmin: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -30,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [linkedPlayer, setLinkedPlayer] = useState<LinkedPlayerProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -73,6 +82,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile(data);
   };
 
+  const fetchLinkedPlayer = async (activeUser: User | null) => {
+    if (!activeUser) {
+      setLinkedPlayer(null);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("players")
+      .select("id, full_name, approved")
+      .eq("user_id", activeUser.id)
+      .maybeSingle();
+
+    if (error) {
+      setLinkedPlayer(null);
+      console.error("Error loading linked player profile:", error.message);
+      return;
+    }
+
+    if (!data) {
+      setLinkedPlayer(null);
+      return;
+    }
+
+    setLinkedPlayer({
+      id: data.id,
+      full_name: data.full_name,
+      approved: Boolean(data.approved),
+    });
+  };
+
   const fetchAdminStatus = async (activeUser: User | null) => {
     if (!activeUser) {
       setIsAdmin(false);
@@ -98,12 +137,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let mounted = true;
 
     const bootstrap = async () => {
+      if (mounted) setLoading(true);
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
       setSession(data.session);
       setUser(data.session?.user ?? null);
       await fetchProfile(data.session?.user ?? null);
       await fetchAdminStatus(data.session?.user ?? null);
+      await fetchLinkedPlayer(data.session?.user ?? null);
       if (mounted) setLoading(false);
     };
 
@@ -112,10 +153,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      fetchProfile(nextSession?.user ?? null);
-      fetchAdminStatus(nextSession?.user ?? null);
+      const syncAuthState = async () => {
+        if (mounted) setLoading(true);
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        await fetchProfile(nextSession?.user ?? null);
+        await fetchAdminStatus(nextSession?.user ?? null);
+        await fetchLinkedPlayer(nextSession?.user ?? null);
+        if (mounted) setLoading(false);
+      };
+      void syncAuthState();
     });
 
     return () => {
@@ -150,6 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshProfile = async () => {
     await fetchProfile(user);
+    await fetchLinkedPlayer(user);
   };
 
   const value = useMemo<AuthContextType>(
@@ -157,6 +205,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user,
       session,
       profile,
+      linkedPlayer,
+      needsPlayerProfile: Boolean(user && !linkedPlayer),
       isAdmin,
       loading,
       signIn,
@@ -164,7 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signOut,
       refreshProfile,
     }),
-    [user, session, profile, isAdmin, loading]
+    [user, session, profile, linkedPlayer, isAdmin, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

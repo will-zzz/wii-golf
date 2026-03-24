@@ -34,8 +34,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-type ApprovedClaim = {
-  player_id: string;
+type LinkedPlayerRow = {
+  id: string;
 };
 
 const Scores: React.FC = () => {
@@ -47,7 +47,7 @@ const Scores: React.FC = () => {
   const [winnerSearch, setWinnerSearch] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [allPlayers, setAllPlayers] = useState<string[]>([]);
-  const [approvedClaims, setApprovedClaims] = useState<ApprovedClaim[]>([]);
+  const [linkedPlayers, setLinkedPlayers] = useState<LinkedPlayerRow[]>([]);
   const [selectedScoreForDispute, setSelectedScoreForDispute] = useState<ScoreEntry | null>(null);
   const [disputeReason, setDisputeReason] = useState("");
   const [submittingDispute, setSubmittingDispute] = useState(false);
@@ -85,24 +85,24 @@ const Scores: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const loadClaims = async () => {
+    const loadLinkedPlayers = async () => {
       if (!user) {
-        setApprovedClaims([]);
+        setLinkedPlayers([]);
         return;
       }
       const { data, error } = await supabase
-        .from("player_claims")
-        .select("player_id")
+        .from("players")
+        .select("id")
         .eq("user_id", user.id)
-        .eq("status", "approved");
+        .eq("approved", true);
 
       if (error) {
-        console.error("Error loading claim data:", error);
+        console.error("Error loading linked player data:", error);
         return;
       }
-      setApprovedClaims((data ?? []) as ApprovedClaim[]);
+      setLinkedPlayers((data ?? []) as LinkedPlayerRow[]);
     };
-    loadClaims();
+    loadLinkedPlayers();
   }, [user]);
 
   // Filter scores based on selected filters
@@ -155,9 +155,9 @@ const Scores: React.FC = () => {
   };
 
   const getDisputablePlayerId = (score: ScoreEntry): string | null => {
-    const claimedPlayerIds = new Set(approvedClaims.map((claim) => claim.player_id));
+    const linkedPlayerIds = new Set(linkedPlayers.map((player) => player.id));
     const match = score.players.find(
-      (player) => player.playerId && claimedPlayerIds.has(player.playerId)
+      (player) => player.playerId && linkedPlayerIds.has(player.playerId)
     );
     return match?.playerId ?? null;
   };
@@ -322,7 +322,7 @@ const Scores: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Report score issue</DialogTitle>
             <DialogDescription>
-              Explain why this score entry is inaccurate. This is tied to your claimed player profile.
+              Explain why this score entry is inaccurate. This is tied to your linked player profile.
             </DialogDescription>
           </DialogHeader>
           <Textarea

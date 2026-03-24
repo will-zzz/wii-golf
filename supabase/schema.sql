@@ -103,6 +103,8 @@ $$;
 create or replace function public.refresh_player_rankings_cache()
 returns void
 language plpgsql
+security definer
+set search_path = public
 as $$
 begin
   truncate table public.player_rankings_cache;
@@ -172,6 +174,8 @@ $$;
 create or replace function public.trigger_refresh_player_rankings_cache()
 returns trigger
 language plpgsql
+security definer
+set search_path = public
 as $$
 begin
   perform public.refresh_player_rankings_cache();

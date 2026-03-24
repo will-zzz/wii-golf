@@ -3,6 +3,13 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -15,13 +22,12 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { useToast } from "@/hooks/use-toast";
 
-type ClaimRow = {
-  id: number;
-  user_id: string;
-  player_id: string;
-  status: "pending" | "approved" | "rejected" | "revoked";
+type PlayerRow = {
+  id: string;
+  full_name: string;
+  approved: boolean;
+  user_id: string | null;
   created_at: string;
-  players: { full_name: string } | null;
 };
 
 type DisputeRow = {
@@ -42,38 +48,84 @@ type ProfileRow = {
   display_name: string | null;
 };
 
+type PlayerOption = {
+  id: string;
+  full_name: string;
+};
+
 const Admin: React.FC = () => {
   const { user, isAdmin, loading } = useAuth();
   const { toast } = useToast();
-  const [claims, setClaims] = useState<ClaimRow[]>([]);
+  const [pendingSignups, setPendingSignups] = useState<PlayerRow[]>([]);
+  const [linkedPlayers, setLinkedPlayers] = useState<PlayerRow[]>([]);
+  const [allPlayers, setAllPlayers] = useState<PlayerOption[]>([]);
   const [disputes, setDisputes] = useState<DisputeRow[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedPlayerId, setSelectedPlayerId] = useState("");
 
   const loadAdminData = async () => {
     setLoadingData(true);
-    const [claimsResult, disputesResult] = await Promise.all([
-      supabase
-        .from("player_claims")
-        .select("id, user_id, player_id, status, created_at, players(full_name)")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("score_disputes")
-        .select(
-          "id, round_id, player_id, reporter_user_id, status, reason, created_at, players(full_name), score_rounds(source_timestamp)"
-        )
-        .order("created_at", { ascending: false }),
-    ]);
+    const [pendingResult, linkedResult, playersResult, disputesResult, profilesResult] =
+      await Promise.all([
+        supabase
+          .from("players")
+          .select("id, full_name, approved, user_id, created_at")
+          .not("user_id", "is", null)
+          .eq("approved", false)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("players")
+          .select("id, full_name, approved, user_id, created_at")
+          .not("user_id", "is", null)
+          .order("full_name", { ascending: true }),
+        supabase
+          .from("players")
+          .select("id, full_name")
+          .eq("approved", true)
+          .order("full_name", { ascending: true }),
+        supabase
+          .from("score_disputes")
+          .select(
+            "id, round_id, player_id, reporter_user_id, status, reason, created_at, players(full_name), score_rounds(source_timestamp)"
+          )
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("user_profiles")
+          .select("user_id, email, display_name")
+          .order("created_at", { ascending: true }),
+      ]);
 
-    if (claimsResult.error) {
+    if (pendingResult.error) {
       toast({
-        title: "Failed to load claims",
-        description: claimsResult.error.message,
+        title: "Failed to load pending signups",
+        description: pendingResult.error.message,
         variant: "destructive",
       });
     } else {
-      setClaims((claimsResult.data ?? []) as unknown as ClaimRow[]);
+      setPendingSignups((pendingResult.data ?? []) as PlayerRow[]);
+    }
+
+    if (linkedResult.error) {
+      toast({
+        title: "Failed to load account links",
+        description: linkedResult.error.message,
+        variant: "destructive",
+      });
+    } else {
+      setLinkedPlayers((linkedResult.data ?? []) as PlayerRow[]);
+    }
+
+    if (playersResult.error) {
+      toast({
+        title: "Failed to load players",
+        description: playersResult.error.message,
+        variant: "destructive",
+      });
+    } else {
+      setAllPlayers((playersResult.data ?? []) as PlayerOption[]);
     }
 
     if (disputesResult.error) {
@@ -86,31 +138,18 @@ const Admin: React.FC = () => {
       setDisputes((disputesResult.data ?? []) as unknown as DisputeRow[]);
     }
 
-    const userIds = new Set<string>();
-    (claimsResult.data ?? []).forEach((claim: any) => userIds.add(claim.user_id));
-    (disputesResult.data ?? []).forEach((dispute: any) =>
-      userIds.add(dispute.reporter_user_id)
-    );
-
-    if (userIds.size > 0) {
-      const { data: profileRows, error: profilesError } = await supabase
-        .from("user_profiles")
-        .select("user_id, email, display_name")
-        .in("user_id", Array.from(userIds));
-
-      if (profilesError) {
-        toast({
-          title: "Failed to load user profiles",
-          description: profilesError.message,
-          variant: "destructive",
-        });
-      } else {
-        const nextProfiles: Record<string, ProfileRow> = {};
-        (profileRows ?? []).forEach((row) => {
-          nextProfiles[row.user_id] = row;
-        });
-        setProfiles(nextProfiles);
-      }
+    if (profilesResult.error) {
+      toast({
+        title: "Failed to load user profiles",
+        description: profilesResult.error.message,
+        variant: "destructive",
+      });
+    } else {
+      const nextProfiles: Record<string, ProfileRow> = {};
+      ((profilesResult.data ?? []) as ProfileRow[]).forEach((row) => {
+        nextProfiles[row.user_id] = row;
+      });
+      setProfiles(nextProfiles);
     }
 
     setLoadingData(false);
@@ -121,26 +160,23 @@ const Admin: React.FC = () => {
     loadAdminData();
   }, [user, isAdmin]);
 
-  const pendingClaims = useMemo(
-    () => claims.filter((claim) => claim.status === "pending"),
-    [claims]
-  );
   const openDisputes = useMemo(
     () => disputes.filter((dispute) => dispute.status === "open"),
     [disputes]
   );
+  const allProfiles = useMemo(() => Object.values(profiles), [profiles]);
 
-  const updateClaimStatus = async (claimId: number, status: ClaimRow["status"]) => {
-    setBusyId(`claim-${claimId}`);
+  const approveSignup = async (playerId: string) => {
+    setBusyId(`signup-${playerId}`);
     const { error } = await supabase
-      .from("player_claims")
-      .update({ status })
-      .eq("id", claimId);
+      .from("players")
+      .update({ approved: true })
+      .eq("id", playerId);
     setBusyId(null);
 
     if (error) {
       toast({
-        title: "Failed to update claim",
+        title: "Failed to approve signup",
         description: error.message,
         variant: "destructive",
       });
@@ -148,8 +184,32 @@ const Admin: React.FC = () => {
     }
 
     toast({
-      title: "Claim updated",
-      description: `Claim marked as ${status}.`,
+      title: "Signup approved",
+      description: "Player profile is now public.",
+    });
+    await loadAdminData();
+  };
+
+  const rejectSignup = async (playerId: string) => {
+    setBusyId(`signup-${playerId}`);
+    const { error } = await supabase
+      .from("players")
+      .update({ user_id: null })
+      .eq("id", playerId);
+    setBusyId(null);
+
+    if (error) {
+      toast({
+        title: "Failed to reject signup",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Signup rejected",
+      description: "Account was unlinked from this pending profile.",
     });
     await loadAdminData();
   };
@@ -182,6 +242,55 @@ const Admin: React.FC = () => {
       title: "Dispute updated",
       description: `Dispute marked as ${status}.`,
     });
+    await loadAdminData();
+  };
+
+  const linkAccountToPlayer = async () => {
+    if (!selectedUserId || !selectedPlayerId) return;
+    setBusyId("advanced-link");
+
+    const { error: unlinkError } = await supabase
+      .from("players")
+      .update({ user_id: null })
+      .eq("user_id", selectedUserId)
+      .neq("id", selectedPlayerId);
+
+    if (unlinkError) {
+      setBusyId(null);
+      toast({
+        title: "Failed preparing link",
+        description: unlinkError.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { error: linkError } = await supabase
+      .from("players")
+      .update({ user_id: selectedUserId })
+      .eq("id", selectedPlayerId);
+
+    setBusyId(null);
+
+    if (linkError) {
+      toast({
+        title: "Failed linking account",
+        description: linkError.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedProfile = profiles[selectedUserId];
+    const selectedPlayer = allPlayers.find((player) => player.id === selectedPlayerId);
+    toast({
+      title: "Account linked",
+      description: `${
+        selectedProfile?.display_name || selectedProfile?.email || selectedUserId
+      } -> ${selectedPlayer?.full_name || selectedPlayerId}`,
+    });
+    setSelectedUserId("");
+    setSelectedPlayerId("");
     await loadAdminData();
   };
 
@@ -227,7 +336,7 @@ const Admin: React.FC = () => {
     >
       <h1 className="text-3xl font-bold mb-2">Admin</h1>
       <p className="text-gray-600 mb-6">
-        Review player claim requests and score disputes.
+        Approve new player signups, review disputes, and manage account links.
       </p>
 
       {loadingData ? (
@@ -235,61 +344,66 @@ const Admin: React.FC = () => {
           Loading admin data...
         </div>
       ) : (
-        <Tabs defaultValue="claims" className="w-full">
+        <Tabs defaultValue="approvals" className="w-full">
           <TabsList>
-            <TabsTrigger value="claims">Claims ({pendingClaims.length} pending)</TabsTrigger>
+            <TabsTrigger value="approvals">
+              Signups ({pendingSignups.length} pending)
+            </TabsTrigger>
             <TabsTrigger value="disputes">Disputes ({openDisputes.length} open)</TabsTrigger>
+            <TabsTrigger value="advanced">Advanced</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="claims">
+          <TabsContent value="approvals">
             <div className="bg-white border rounded-lg mt-4 overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Player</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>Pending Player</TableHead>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Submitted</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {claims.map((claim) => {
-                    const profile = profiles[claim.user_id];
-                    return (
-                      <TableRow key={claim.id}>
-                        <TableCell>{claim.players?.full_name ?? "Unknown player"}</TableCell>
-                        <TableCell>
-                          {profile?.display_name || profile?.email || claim.user_id}
-                        </TableCell>
-                        <TableCell className="capitalize">{claim.status}</TableCell>
-                        <TableCell>
-                          {new Date(claim.created_at).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button
-                            size="sm"
-                            disabled={
-                              busyId === `claim-${claim.id}` || claim.status === "approved"
-                            }
-                            onClick={() => void updateClaimStatus(claim.id, "approved")}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={
-                              busyId === `claim-${claim.id}` || claim.status === "rejected"
-                            }
-                            onClick={() => void updateClaimStatus(claim.id, "rejected")}
-                          >
-                            Reject
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {pendingSignups.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-gray-500">
+                        No pending signups.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    pendingSignups.map((signup) => {
+                      const profile = signup.user_id ? profiles[signup.user_id] : null;
+                      return (
+                        <TableRow key={signup.id}>
+                          <TableCell>{signup.full_name}</TableCell>
+                          <TableCell>
+                            {profile?.display_name || profile?.email || signup.user_id}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(signup.created_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Button
+                              size="sm"
+                              disabled={busyId === `signup-${signup.id}`}
+                              onClick={() => void approveSignup(signup.id)}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={busyId === `signup-${signup.id}`}
+                              onClick={() => void rejectSignup(signup.id)}
+                            >
+                              Reject
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -355,6 +469,84 @@ const Admin: React.FC = () => {
                       </TableRow>
                     );
                   })}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="advanced">
+            <div className="bg-white border rounded-lg mt-4 p-4">
+              <h2 className="text-lg font-semibold mb-1">Account to Player Linking</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Rare admin operation. Use this when linking an existing legacy player to a
+                specific account.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select user account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allProfiles.map((profile) => (
+                      <SelectItem key={profile.user_id} value={profile.user_id}>
+                        {profile.display_name || profile.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedPlayerId} onValueChange={setSelectedPlayerId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select approved player" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allPlayers.map((player) => (
+                      <SelectItem key={player.id} value={player.id}>
+                        {player.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  disabled={
+                    busyId === "advanced-link" || !selectedUserId || !selectedPlayerId
+                  }
+                  onClick={() => void linkAccountToPlayer()}
+                >
+                  {busyId === "advanced-link" ? "Linking..." : "Link account"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-white border rounded-lg mt-4 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Player</TableHead>
+                    <TableHead>Linked account</TableHead>
+                    <TableHead>Approved</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {linkedPlayers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-gray-500">
+                        No account links yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    linkedPlayers.map((player) => {
+                      const profile = player.user_id ? profiles[player.user_id] : null;
+                      return (
+                        <TableRow key={player.id}>
+                          <TableCell>{player.full_name}</TableCell>
+                          <TableCell>
+                            {profile?.display_name || profile?.email || player.user_id}
+                          </TableCell>
+                          <TableCell>{player.approved ? "Yes" : "No"}</TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
             </div>
