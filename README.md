@@ -41,8 +41,10 @@ For the frontend app (browser reads), also set:
 
 ```bash
 VITE_SUPABASE_URL="https://<project-ref>.supabase.co"
-VITE_SUPABASE_ANON_KEY="<anon-public-key>"
+VITE_SUPABASE_PUBLISHABLE_KEY="<publishable-public-key>"
 ```
+
+If you still use `VITE_SUPABASE_ANON_KEY`, treat it as a legacy fallback only. Some Supabase projects now disable legacy anon/service_role JWT keys.
 
 Put `VITE_*` values in `.env` for local dev. Do not expose `SUPABASE_SERVICE_ROLE_KEY` to the browser.
 
@@ -76,3 +78,54 @@ node ./scripts/migrate-to-supabase.mjs "<players.csv>" "<scores.csv>" "<events.c
 You do **not** need a separate app server to compute rankings. The schema uses Postgres functions + triggers to recompute and store rankings whenever players/scores change. Your frontend can read from `player_rankings` directly.
 
 If your data volume grows a lot, you can switch to scheduled recompute (e.g., Supabase cron + RPC) instead of per-write triggers.
+
+## Auth + Accounts Setup
+
+Email/password auth is powered by Supabase Auth and JWT sessions.
+
+### 1) Run auth SQL migration
+
+Run `supabase/auth_accounts.sql` in the Supabase SQL Editor.
+
+This adds:
+- `user_profiles`
+- `player_claims` (claim workflow for linking account -> player)
+- `score_disputes` (users can report bad scores tied to their claimed player)
+- RLS policies that restrict users to their own account data and dispute rights
+
+### 2) Configure Supabase Auth
+
+In Supabase dashboard:
+- `Authentication` -> `Providers` -> Email enabled
+- `Authentication` -> `Email Templates` configured (optional branding)
+- `Authentication` -> `URL Configuration`:
+  - `Site URL`: your app domain (or localhost)
+  - add redirect URLs for local + prod
+
+Recommended security toggles:
+- Keep email confirmation enabled
+- Enable leaked password protection
+- Consider adding CAPTCHA on signup if spam appears
+
+### 3) Frontend env vars
+
+```bash
+VITE_SUPABASE_URL="https://<project-ref>.supabase.co"
+VITE_SUPABASE_ANON_KEY="<anon-public-key>"
+```
+
+Never expose service-role keys in frontend env vars.
+
+### 4) Create your first admin
+
+After you sign up once, run this in Supabase SQL editor (replace email):
+
+```sql
+insert into public.app_admins (user_id)
+select id
+from auth.users
+where email = 'you@example.com'
+on conflict (user_id) do nothing;
+```
+
+Then refresh the app. You will see an `Admin` link in the account menu.

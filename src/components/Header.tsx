@@ -4,6 +4,17 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import Logo from "./Logo";
 import { Menu, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import AuthDialog from "./AuthDialog";
+import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
   { title: "About", href: "/about" },
@@ -15,7 +26,9 @@ const navItems = [
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut, isAdmin } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -31,104 +44,155 @@ const Header: React.FC = () => {
   }, [location.pathname]);
 
   return (
-    <header
-      className={cn(
-        "fixed top-0 left-0 right-0 w-full z-50 transition-all duration-300 ease-in-out",
-        isScrolled || mobileMenuOpen
-          ? "bg-white/95 backdrop-blur-md shadow-sm"
-          : "bg-white/80 backdrop-blur-sm"
-      )}
-    >
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-6">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex-shrink-0">
-            <Logo />
-          </div>
+    <>
+      <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
+      <header
+        className={cn(
+          "fixed top-0 left-0 right-0 w-full z-50 transition-all duration-300 ease-in-out",
+          isScrolled || mobileMenuOpen
+            ? "bg-white/95 backdrop-blur-md shadow-sm"
+            : "bg-white/80 backdrop-blur-sm"
+        )}
+      >
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-6">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex-shrink-0">
+              <Logo />
+            </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex flex-1 justify-center space-x-8">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={cn(
-                  "relative py-2 px-1 text-2xl font-medium transition-colors",
-                  "after:absolute after:left-0 after:bottom-0 after:h-0.5 after:bg-pwga-green",
-                  "after:transition-all after:duration-300 hover:text-pwga-green",
-                  location.pathname === item.href
-                    ? "text-pwga-green after:w-full"
-                    : "text-gray-500 after:w-0 hover:after:w-full"
-                )}
-              >
-                {item.title}
-              </Link>
-            ))}
-          </nav>
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex flex-1 justify-center space-x-8">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "relative py-2 px-1 text-2xl font-medium transition-colors",
+                    "after:absolute after:left-0 after:bottom-0 after:h-0.5 after:bg-pwga-green",
+                    "after:transition-all after:duration-300 hover:text-pwga-green",
+                    location.pathname === item.href
+                      ? "text-pwga-green after:w-full"
+                      : "text-gray-500 after:w-0 hover:after:w-full"
+                  )}
+                >
+                  {item.title}
+                </Link>
+              ))}
+            </nav>
 
-          {/* Apply Button */}
-          <div className="hidden md:flex">
-            <a
-              href="https://docs.google.com/forms/d/e/1FAIpQLSeHqJNp82Ig2erwn3q3C4qOxt8lXentPQqSEtVaV9yPWLuJ9Q/viewform?usp=dialog"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="py-2 px-4 text-sm font-medium text-white bg-pwga-green rounded-md shadow hover:bg-pwga-green-dark transition-colors"
-            >
-              Apply
-            </a>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden flex items-center"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-          >
-            {mobileMenuOpen ? (
-              <X className="h-6 w-6 text-gray-700" />
-            ) : (
-              <Menu className="h-6 w-6 text-gray-700" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Navigation */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-t">
-          <div className="pt-2 pb-4 px-4 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={cn(
-                  "block py-3 px-4 text-base font-medium rounded-md transition-colors",
-                  location.pathname === item.href
-                    ? "text-pwga-green bg-gray-50"
-                    : "text-gray-700 hover:bg-gray-50 hover:text-pwga-green"
-                )}
-              >
-                {item.title}
-              </Link>
-            ))}
-            <a
-              key="apply"
-              href="https://docs.google.com/forms/d/e/1FAIpQLSeHqJNp82Ig2erwn3q3C4qOxt8lXentPQqSEtVaV9yPWLuJ9Q/viewform?usp=dialog"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                "block py-3 px-4 text-base font-medium rounded-md transition-colors",
-                location.pathname ===
-                  "https://docs.google.com/forms/d/e/1FAIpQLSeHqJNp82Ig2erwn3q3C4qOxt8lXentPQqSEtVaV9yPWLuJ9Q/viewform?usp=dialog"
-                  ? "text-pwga-green bg-gray-50"
-                  : "text-gray-700 hover:bg-gray-50 hover:text-pwga-green"
+            <div className="hidden md:flex">
+              {!user ? (
+                <Button
+                  onClick={() => setAuthDialogOpen(true)}
+                  className="py-2 px-4 text-sm font-medium text-white bg-pwga-green rounded-md shadow hover:bg-pwga-green-dark transition-colors"
+                >
+                  Log in / Sign up
+                </Button>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="max-w-[220px] truncate">
+                      {user.email}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/account">Account settings</Link>
+                    </DropdownMenuItem>
+                    {isAdmin ? (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin">Admin</Link>
+                      </DropdownMenuItem>
+                    ) : null}
+                    <DropdownMenuItem
+                      onClick={() => {
+                        void signOut();
+                      }}
+                    >
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden flex items-center"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             >
-              Apply
-            </a>
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6 text-gray-700" />
+              ) : (
+                <Menu className="h-6 w-6 text-gray-700" />
+              )}
+            </button>
           </div>
         </div>
-      )}
-    </header>
+        {/* Mobile Navigation */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t">
+            <div className="pt-2 pb-4 px-4 space-y-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "block py-3 px-4 text-base font-medium rounded-md transition-colors",
+                    location.pathname === item.href
+                      ? "text-pwga-green bg-gray-50"
+                      : "text-gray-700 hover:bg-gray-50 hover:text-pwga-green"
+                  )}
+                >
+                  {item.title}
+                </Link>
+              ))}
+              {!user ? (
+                <button
+                  key="auth"
+                  onClick={() => {
+                    setAuthDialogOpen(true);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left block py-3 px-4 text-base font-medium rounded-md transition-colors text-gray-700 hover:bg-gray-50 hover:text-pwga-green"
+                >
+                  Log in / Sign up
+                </button>
+              ) : (
+                <>
+                  <Link
+                    to="/account"
+                    className="block py-3 px-4 text-base font-medium rounded-md transition-colors text-gray-700 hover:bg-gray-50 hover:text-pwga-green"
+                  >
+                    Account settings
+                  </Link>
+                  {isAdmin ? (
+                    <Link
+                      to="/admin"
+                      className="block py-3 px-4 text-base font-medium rounded-md transition-colors text-gray-700 hover:bg-gray-50 hover:text-pwga-green"
+                    >
+                      Admin
+                    </Link>
+                  ) : null}
+                  <button
+                    onClick={() => {
+                      void signOut();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left block py-3 px-4 text-base font-medium rounded-md transition-colors text-gray-700 hover:bg-gray-50 hover:text-pwga-green"
+                  >
+                    Sign out
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </header>
+    </>
   );
 };
 

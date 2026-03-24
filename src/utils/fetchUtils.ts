@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 export type PlayerScore = {
   name: string;
   score: number;
+  playerId?: string;
 };
 
 export type ScoreEntry = {
@@ -53,6 +54,7 @@ export type EventData = {
 type SupabasePlayerRelation = { full_name?: string } | { full_name?: string }[] | null;
 
 type SupabaseRoundScoreRow = {
+  player_id: string | null;
   player_slot: number | null;
   score: number | null;
   players: SupabasePlayerRelation;
@@ -108,6 +110,7 @@ export const fetchScoresData = async (): Promise<ScoreEntry[]> => {
       source_timestamp,
       photo_url,
       round_scores (
+        player_id,
         player_slot,
         score,
         players (
@@ -130,11 +133,12 @@ export const fetchScoresData = async (): Promise<ScoreEntry[]> => {
         .map((entry) => ({
           name: getPlayerNameFromRelation(entry.players),
           score: Number(entry.score),
+          playerId: entry.player_id ?? undefined,
           slot: Number(entry.player_slot ?? 99),
         }))
         .filter((entry) => entry.name && Number.isFinite(entry.score))
         .sort((a, b) => a.slot - b.slot)
-        .map(({ name, score }) => ({ name, score })) as PlayerScore[];
+        .map(({ name, score, playerId }) => ({ name, score, playerId })) as PlayerScore[];
 
       if (players.length < 2) {
         return null;

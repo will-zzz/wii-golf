@@ -1,12 +1,15 @@
 import React from "react";
 import { Trophy } from "lucide-react";
 import { PlayerScore } from "@/utils/fetchUtils";
+import { Button } from "@/components/ui/button";
 
 interface ScoreCardProps {
   imageUrl: string;
   date: string;
   players: PlayerScore[];
   winners?: PlayerScore[];
+  onReport?: () => void;
+  canReport?: boolean;
 }
 
 const ScoreCard: React.FC<ScoreCardProps> = ({
@@ -14,6 +17,8 @@ const ScoreCard: React.FC<ScoreCardProps> = ({
   date,
   players,
   winners = [],
+  onReport,
+  canReport = false,
 }) => {
   // Sort players by score (ascending)
   const sortedPlayers = [...players].sort((a, b) => a.score - b.score);
@@ -61,6 +66,13 @@ const ScoreCard: React.FC<ScoreCardProps> = ({
               ))}
             </div>
           </div>
+          {canReport && onReport ? (
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={onReport}>
+                Report score issue
+              </Button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

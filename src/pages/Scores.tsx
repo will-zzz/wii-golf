@@ -19,8 +19,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { fetchScoresData, getAllPlayersFromScores, ScoreEntry } from "@/utils/fetchUtils";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type ApprovedClaim = {
+  player_id: string;
+};
 
 const Scores: React.FC = () => {
   // States for scores and filters
@@ -31,6 +47,12 @@ const Scores: React.FC = () => {
   const [winnerSearch, setWinnerSearch] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [allPlayers, setAllPlayers] = useState<string[]>([]);
+  const [approvedClaims, setApprovedClaims] = useState<ApprovedClaim[]>([]);
+  const [selectedScoreForDispute, setSelectedScoreForDispute] = useState<ScoreEntry | null>(null);
+  const [disputeReason, setDisputeReason] = useState("");
+  const [submittingDispute, setSubmittingDispute] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   // Fetch scores from Supabase
   useEffect(() => {
@@ -61,6 +83,27 @@ const Scores: React.FC = () => {
 
     fetchScores();
   }, []);
+
+  useEffect(() => {
+    const loadClaims = async () => {
+      if (!user) {
+        setApprovedClaims([]);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("player_claims")
+        .select("player_id")
+        .eq("user_id", user.id)
+        .eq("status", "approved");
+
+      if (error) {
+        console.error("Error loading claim data:", error);
+        return;
+      }
+      setApprovedClaims((data ?? []) as ApprovedClaim[]);
+    };
+    loadClaims();
+  }, [user]);
 
   // Filter scores based on selected filters
   useEffect(() => {
@@ -109,6 +152,60 @@ const Scores: React.FC = () => {
     setDateFilter(undefined);
     setPlayerFilter("all_players");
     setWinnerSearch("");
+  };
+
+  const getDisputablePlayerId = (score: ScoreEntry): string | null => {
+    const claimedPlayerIds = new Set(approvedClaims.map((claim) => claim.player_id));
+    const match = score.players.find(
+      (player) => player.playerId && claimedPlayerIds.has(player.playerId)
+    );
+    return match?.playerId ?? null;
+  };
+
+  const handleSubmitDispute = async () => {
+    if (!selectedScoreForDispute) return;
+    const playerId = getDisputablePlayerId(selectedScoreForDispute);
+    if (!playerId) {
+      toast({
+        title: "Cannot submit dispute",
+        description: "No approved claimed player in this scorecard.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (disputeReason.trim().length < 10) {
+      toast({
+        title: "More detail needed",
+        description: "Please provide at least 10 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmittingDispute(true);
+    const { error } = await supabase.from("score_disputes").insert({
+      round_id: selectedScoreForDispute.id,
+      player_id: playerId,
+      reporter_user_id: user?.id,
+      reason: disputeReason.trim(),
+    });
+    setSubmittingDispute(false);
+
+    if (error) {
+      toast({
+        title: "Failed to submit dispute",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Dispute submitted",
+      description: "Your dispute has been logged for review.",
+    });
+    setSelectedScoreForDispute(null);
+    setDisputeReason("");
   };
 
   return (
@@ -212,6 +309,45 @@ const Scores: React.FC = () => {
       </div>
 
       {/* Show message if no scores found */}
+      <Dialog
+        open={Boolean(selectedScoreForDispute)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedScoreForDispute(null);
+            setDisputeReason("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report score issue</DialogTitle>
+            <DialogDescription>
+              Explain why this score entry is inaccurate. This is tied to your claimed player profile.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Example: This round includes me but I did not play this game."
+            value={disputeReason}
+            onChange={(event) => setDisputeReason(event.target.value)}
+            className="min-h-28"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedScoreForDispute(null);
+                setDisputeReason("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitDispute} disabled={submittingDispute}>
+              {submittingDispute ? "Submitting..." : "Submit dispute"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {loading ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <p className="text-lg text-gray-500">Loading scores...</p>
@@ -234,6 +370,8 @@ const Scores: React.FC = () => {
               date={score.date}
               players={score.players}
               winners={score.winners}
+              canReport={Boolean(user && getDisputablePlayerId(score))}
+              onReport={() => setSelectedScoreForDispute(score)}
             />
           ))}
         </div>
